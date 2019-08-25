@@ -79,7 +79,7 @@ class FluorescenceModel:
                 "Amino acid %s occurs %d times in protein %s",
                 i, y[i], y)
 
-            for z_i in range(y[i]):
+            for z_i in range(y[i] + 1):
                 p_x_i_given_y_i += \
                     self.p_x_i_given_z_i(x[i], z_i) * \
                     self.p_z_i_given_y_i(z_i, y[i])
