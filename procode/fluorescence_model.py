@@ -1,4 +1,7 @@
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FluorescenceModel:
@@ -65,14 +68,17 @@ class FluorescenceModel:
         '''
 
         amino_acids = np.nonzero(x >= 0)[0]
-        print("Found measurements for amino acids %s" % amino_acids)
+        logger.debug("Found measurements for amino acids %s", amino_acids)
 
         p = 1
         for i in amino_acids:
 
             p_x_i_given_y_i = 0
 
-            print("Amino acid %s occurs %d times in protein %s" % (i, y[i], y))
+            logger.debug(
+                "Amino acid %s occurs %d times in protein %s",
+                i, y[i], y)
+
             for z_i in range(y[i]):
                 p_x_i_given_y_i += \
                     self.p_x_i_given_z_i(x[i], z_i) * \
