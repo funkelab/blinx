@@ -45,7 +45,7 @@ class FluorescenceModel:
             Quantitative Microscopy Measurements)
     '''
 
-    def __init__(self, p_on, μ, σ, σ_background, q):
+    def __init__(self, p_on=0.9, μ=1.0, σ=0.1, σ_background=0.1, q=0):
 
         self.p_on = p_on
         self.μ = μ
