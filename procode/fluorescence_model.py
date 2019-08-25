@@ -62,27 +62,36 @@ class FluorescenceModel:
 
                 Measured fluorescences per dye. -1 to indicate no measurement.
 
-            y (ndarray, int, shape (n,)):
+            y (ndarray, int, shape (n,) or (m, n)):
 
-                Number of amino acids, congruent with x.
+                Number of amino acids, congruent with x. If a 2D array is
+                given, p(x|y) is computed for each row in y and an array of
+                probabilities is returned.
         '''
+
+        x = np.array(x, dtype=np.float64)
+        y = np.array(y, dtype=np.int32)
 
         amino_acids = np.nonzero(x >= 0)[0]
         logger.debug("Found measurements for amino acids %s", amino_acids)
 
-        p = 1
+        p = np.ones((y.shape[0],)) if len(y.shape) == 2 else 1
         for i in amino_acids:
 
-            p_x_i_given_y_i = 0
+            p_x_i_given_y_i = np.zeros((y.shape[0],)) \
+                    if len(y.shape) == 2 else 0
+
+            y_i = y[:,i] if len(y.shape) == 2 else y[i]
+            max_y_i = np.max(y_i)
 
             logger.debug(
-                "Amino acid %s occurs %d times in protein %s",
-                i, y[i], y)
+                "Amino acid %s occurs at most %d times",
+                i, max_y_i)
 
-            for z_i in range(y[i] + 1):
+            for z_i in range(max_y_i + 1):
                 p_x_i_given_y_i += \
                     self.p_x_i_given_z_i(x[i], z_i) * \
-                    self.p_z_i_given_y_i(z_i, y[i])
+                    self.p_z_i_given_y_i(z_i, y_i)
 
             p *= p_x_i_given_y_i
 
@@ -106,7 +115,8 @@ class FluorescenceModel:
 
     def p_z_i_given_y_i(self, z_i, y_i):
 
-        if z_i > y_i:
-            return 0.0
+        p = self.p_on**z_i * (1.0 - self.p_on)**(y_i - z_i)
+        p *= z_i <= y_i
 
-        return self.p_on**z_i * (1.0 - self.p_on)**(y_i - z_i)
+        return p
+
