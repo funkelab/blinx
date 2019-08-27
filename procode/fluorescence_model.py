@@ -49,6 +49,7 @@ class FluorescenceModel:
 
         self.p_on = p_on
         self.μ = μ
+        self.σ = σ
         self.σ2 = σ**2
         self.σ2_background = σ_background**2
         self.q = q
@@ -96,6 +97,39 @@ class FluorescenceModel:
             p *= p_x_i_given_y_i
 
         return p
+
+    def sample_x_given_y(self, y, num_samples=1):
+        '''Sample x ~ p(x|y).
+
+        Args:
+
+            y (ndarray, int, shape (n,) or (m, n)):
+
+                Number of amino acids, congruent with x. If a 2D array is
+                given, x ~ p(x|y) is sampled for each row ``num_samples``
+                times.
+
+        Returns:
+
+            samples x as an ndarray of shape ``(num_samples, n)`` if ``y`` is
+            1D, or ``(num_samples, m, n)`` if ``y`` is 2D.
+        '''
+
+        y = np.array(y)
+
+        size = (num_samples,) + y.shape
+
+        z = np.random.binomial(y, self.p_on, size=size)
+
+        μ = self.μ + np.log(z) - self.q
+        σ = np.ones_like(μ)*self.σ
+
+        μ[z == 0] = 0
+        σ[z == 0] = self.σ2_background
+
+        x = np.random.lognormal(μ, σ)
+
+        return x
 
     def p_x_i_given_z_i(self, x_i, z_i):
 
