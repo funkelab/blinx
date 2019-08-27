@@ -82,7 +82,7 @@ class FluorescenceModel:
             p_x_i_given_y_i = np.zeros((y.shape[0],)) \
                     if len(y.shape) == 2 else 0
 
-            y_i = y[:,i] if len(y.shape) == 2 else y[i]
+            y_i = y[:, i] if len(y.shape) == 2 else y[i]
             max_y_i = np.max(y_i)
 
             logger.debug(
@@ -144,8 +144,8 @@ class FluorescenceModel:
 
     def log_normal(self, x, μ, σ2):
         return \
-            1.0/(x*np.sqrt(2.0*np.pi*σ2))* \
-            np.exp(-(np.log(x) - μ)**2/(2.0*σ2))
+            1.0 / (x * np.sqrt(2.0 * np.pi * σ2)) * \
+            np.exp(-(np.log(x) - μ)**2/(2.0 * σ2))
 
     def p_z_i_given_y_i(self, z_i, y_i):
 
@@ -153,4 +153,3 @@ class FluorescenceModel:
         p *= z_i <= y_i
 
         return p
-
