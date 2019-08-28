@@ -1,5 +1,6 @@
-import numpy as np
 import logging
+import numpy as np
+import scipy.stats
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,4 @@ class FluorescenceModel:
 
     def p_z_i_given_y_i(self, z_i, y_i):
 
-        p = self.p_on**z_i * (1.0 - self.p_on)**(y_i - z_i)
-        p *= z_i <= y_i
-
-        return p
+        return scipy.stats.binom.pmf(z_i, y_i, self.p_on)
