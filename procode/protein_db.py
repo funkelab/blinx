@@ -64,7 +64,6 @@ class ProteinDb:
     def get_amino_acid_counts(
             self,
             amino_acids=None,
-            random_sample=False,
             num_samples=None):
         '''Get a numpy array of counts for the given amino acids. By default,
         returns these counts for all proteins in the DB. If ``random_sample``
@@ -77,26 +76,32 @@ class ProteinDb:
                 The amino acids to get the counts for. If not given, get the
                 counts for all amino acids.
 
-            random_sample (bool, optional):
-                If ``True``, get a random sample of size ``num_samples``.
-
             num_samples (int, optional):
-                Size of the random sample.
+                Size of the random sample. If not given, amino acid counts for
+                all proteins in the DB are returned.
 
         Returns:
 
             A tuple ``(identifiers, counts)``.
         '''
 
-        if random_sample:
-            raise RuntimeError("Not yet implemented")
-
         if amino_acids is not None:
             aa_indices = [aa.value for aa in amino_acids]
         else:
             aa_indices = slice(None)
 
-        counts = self.amino_acid_counts[:, aa_indices]
-        identifiers = [protein['identifier'] for protein in self.proteins]
+        if num_samples is not None:
+            sample_indices = np.random.choice(
+                len(self.proteins),
+                num_samples,
+                replace=False)
+            proteins = [self.proteins[i] for i in sample_indices]
+            amino_acid_counts = self.amino_acid_counts[sample_indices]
+        else:
+            proteins = self.proteins
+            amino_acid_counts = self.amino_acid_counts
+
+        identifiers = [protein['identifier'] for protein in proteins]
+        counts = amino_acid_counts[:, aa_indices]
 
         return identifiers, counts
