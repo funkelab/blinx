@@ -117,7 +117,10 @@ class FluorescenceModel:
 
         y = np.array(y)
 
-        size = (num_samples,) + y.shape
+        if num_samples > 1:
+            size = (num_samples,) + y.shape
+        else:
+            size = y.shape
 
         z = np.random.binomial(y, self.p_on, size=size)
 
