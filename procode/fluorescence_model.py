@@ -134,6 +134,29 @@ class FluorescenceModel:
 
         return x
 
+    def maximum_a_posterior(self, x, ys):
+        '''Finds the maximum a posterior y* = argmax_y p(y|x) for x amongst the
+        given ys.
+
+        Args:
+
+            x (ndarray, float, shape (n,)):
+
+                Measurements for one protein.
+
+            y (ndarray, int, shape (m, n)):
+
+                Number of amino acids for ``m`` proteins.
+
+        Returns:
+            The index ``i`` into ``ys``, such that ``y* = ys[i]``.'''
+
+        # p(y|x) = p(x|y)*p(y)/C ⇒ for uniform p(y), the posterior is
+        # proportional to p(x|y)
+        posterior = self.p_x_given_y(x, ys)
+
+        return np.argmax(posterior)
+
     def p_x_i_given_z_i(self, x_i, z_i):
 
         if z_i == 0:
