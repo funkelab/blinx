@@ -8,5 +8,5 @@ install-dev:
 
 .PHONY: tests
 tests:
-	PY_MAJOR_VERSION=py`python -c 'import sys; print(sys.version_info[0])'` pytest -v --cov=procode --cov-config=.coveragerc procode
-	flake8 procode
+	PY_MAJOR_VERSION=py`python -c 'import sys; print(sys.version_info[0])'` pytest -v --cov=promap --cov-config=.coveragerc promap
+	flake8 promap
