@@ -52,7 +52,10 @@ def p_trace_given_z_i(trace, z, mu_i, sigma_i2, mu_b, sigma_b2):
     
     return result
 
-def vmap_p_x_given_z(x, zs, mu_i, sigma_i2, mu_b, sigma_b2):
+def vmap_p_x_given_z(x, y, mu_i, sigma_i2, mu_b, sigma_b2):
+    zs = jnp.arange(0,y+1)
+    x = jnp.expand_dims(x,0)
+    
     p_trace_given_z_i_bound = lambda x, z: p_trace_given_z_i(x, z, mu_i, 
                                                              sigma_i2, mu_b, 
                                                              sigma_b2)
@@ -147,10 +150,9 @@ class TestTraceModel(unittest.TestCase):
             for j, x_i in enumerate(trace):
                probs_basic[i,j] = p_x_i_given_z_i(x_i, z, mu_i, sigma_i2, mu_b, sigma_b2)
                
-        zs = jnp.arange(0,y+1)
-        trace_1 = jnp.expand_dims(trace,0)
         
-        probs_vmap = np.asarray(vmap_p_x_given_z(trace_1, zs, mu_i, sigma_i2, mu_b, sigma_b2)).T
+        
+        probs_vmap = np.asarray(vmap_p_x_given_z(trace, y, mu_i, sigma_i2, mu_b, sigma_b2)).T
         
         e_params = EmissionParams(mu_i=mu_i, sigma_i=sigma_i,
                                   mu_b=mu_b, sigma_b=sigma_b)
@@ -160,6 +162,8 @@ class TestTraceModel(unittest.TestCase):
         for i,z in enumerate(range(y+1)):
             for j, x_i in enumerate(trace):
                probs_f_model[i,j] = f_model.p_x_i_given_z_i(x_i, z)
+               
+        probs_f_model = f_model.vmap_p_x_given_z(trace, y+1)
                
         self.assertAlmostEqual(probs_basic.all(), probs_f_model.all(), places=5)
         self.assertAlmostEqual(probs_vmap.all(), probs_f_model.all(), places=5)
@@ -179,9 +183,8 @@ class TestTraceModel(unittest.TestCase):
         t_model = TraceModel(e_params, 0.1, len(trace))
         t_model.set_params(0.05, 0.1)
         
-        zs = jnp.arange(0,y+1)
-        trace_1 = jnp.expand_dims(trace,0)
-        probs_vmap = np.asarray(vmap_p_x_given_z(trace_1, zs, mu_i, sigma_i2, mu_b, sigma_b2)).T
+        
+        probs_vmap = np.asarray(vmap_p_x_given_z(trace, y, mu_i, sigma_i2, mu_b, sigma_b2)).T
         
         prob_t_model = t_model.p_trace_given_y(trace, y)
         
