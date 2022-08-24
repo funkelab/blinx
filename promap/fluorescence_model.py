@@ -1,179 +1,140 @@
-import logging
 import numpy as np
-import scipy.stats
+import math
 
-logger = logging.getLogger(__name__)
+
+class EmissionParams:
+    '''
+    - Stores all parameters needed for the fluorescence model
+    - Used to calcualte emission probabilities of HMM
+
+    Args:
+        mu_i:
+            the mean intensity of a bound fluorophore
+
+        sigma_i:
+            the standard deviation of the intensity of a bound fluorophore
+
+        mu_b:
+            the mean intensity of the background
+
+        sigma_b:
+            the standard deviation of the intensity of the background
+
+        label_eff:
+            the labeling efficiency of y
+    '''
+
+    def __init__(self,
+                 mu_i=1,
+                 sigma_i=0.1,
+                 mu_b=1,
+                 sigma_b=0.1,
+                 label_eff=1):
+
+        self.mu_i = mu_i
+        self.sigma_i = sigma_i
+        self.mu_b = mu_b
+        self.sigma_b = sigma_b
+        self.label_eff = label_eff
 
 
 class FluorescenceModel:
-    '''Simple fluorescence model for amino acid counts in proteins (y), dye
-    activity (z), and fluorescence measurements per dye (x)::
-
-        y_i ∈ ℕ (count of amino acid i)
-        z_i ∈ ℕ (number of active dyes for amino acid i)
-        x_i ∈ ℝ (total flourescence of active dyes for amino acid i)
-
-        # independent per dye
-        p(x|y) = Σ_i p(x_i|y_i)
-
-        # fluorescence depends on dye activity z_i
-        p(x_i|y_i) = Σ_z_i p(x_i|z_i)p(z_i|y_i)
-
-        # dye activity is binomial
-        p(z_i|y_i) ~ B(y_i, p_on)
-
-        # flourescence follows log-normal distribution
-        p(x*_i|z_i) = sqrt(2πσ_i²)^-1 exp[ -(x*_i - μ_i - ln z_i + q_z_i)² ]
+    '''
+    - Deals with the intensity measurements
+    - The emmission probabilities of the hidden markov model
 
     Args:
+        Emission_Params:
+            Instance of class EmissionParams
 
-        p_on:
-            Probability of a dye to be active.
-
-        μ:
-            Mean log intensity of a dye.
-
-        σ:
-            Standard deviation of log intensity of a dye.
-
-        σ_background:
-            Standard deviation of log intensity of background (mean is assumed
-            to be 0).
-
-        q:
-            Dye-dye interaction factor (see Mutch et al., Biophusical Journal,
-            2007, Deconvolving Single-Molecule Intensity Distributions for
-            Quantitative Microscopy Measurements)
     '''
 
-    def __init__(self, p_on=0.9, μ=1.0, σ=0.1, σ_background=0.1, q=0):
+    def __init__(self, emission_params):
 
-        self.p_on = p_on
-        self.μ = μ
-        self.σ = σ
-        self.σ2 = σ**2
-        self.σ2_background = σ_background**2
-        self.q = q
+        self.mu_i = emission_params.mu_i
+        self.sigma_i = emission_params.sigma_i
+        self.sigma_i2 = emission_params.sigma_i**2
+        self.mu_b = emission_params.mu_b
+        self.sigma_b = emission_params.sigma_b
+        self.sigma_b2 = emission_params.sigma_b**2
+        self.label_eff = emission_params.label_eff
 
-    def p_x_given_y(self, x, y):
-        '''Compute p(x|y).
+    def sample_x_i_given_z_i(self, z):
+        '''
+        - simulate the intensity value given a hidden state "z"
+        - random sampling is done in log-space
+            - sample from a normal distribution
+            - exp() at end so final distribution is lognormal
 
         Args:
-
-            x (ndarray, float, shape (n,)):
-
-                Measured fluorescences per dye. -1 to indicate no measurement.
-
-            y (ndarray, int, shape (n,) or (m, n)):
-
-                Number of amino acids, congruent with x. If a 2D array is
-                given, p(x|y) is computed for each row in y and an array of
-                probabilities is returned.
+            z:
+                The number of active/on fluorophores
         '''
 
-        x = np.array(x, dtype=np.float64)
-        y = np.array(y, dtype=np.int32)
+        if z == 0:
+            signal = -np.inf  # has no contribution once out of log space
+        else:
+            mean_i = np.log(z * self.mu_i * np.exp(self.sigma_i2 / 2))
+            signal = np.random.normal(mean_i, self.sigma_i2)
 
-        amino_acids = np.nonzero(x >= 0)[0]
-        logger.debug("Found measurements for amino acids %s", amino_acids)
+        mean_b = np.log(self.mu_b)
+        background = np.random.normal(mean_b, self.sigma_b2)
 
-        p = np.ones((y.shape[0],)) if len(y.shape) == 2 else 1
-        for i in amino_acids:
+        # split into sperate exps because changing background should
+        # not change the estimate of mu_i
+        return self._bring_out(signal) + self._bring_out(background)
 
-            p_x_i_given_y_i = np.zeros((y.shape[0],)) \
-                    if len(y.shape) == 2 else 0
-
-            y_i = y[:, i] if len(y.shape) == 2 else y[i]
-            max_y_i = np.max(y_i)
-
-            logger.debug(
-                "Amino acid %s occurs at most %d times",
-                i, max_y_i)
-
-            for z_i in range(max_y_i + 1):
-                p_x_i_given_y_i += \
-                    self.p_x_i_given_z_i(x[i], z_i) * \
-                    self.p_z_i_given_y_i(z_i, y_i)
-
-            p *= p_x_i_given_y_i
-
-        return p
-
-    def sample_x_given_y(self, y, num_samples=1):
-        '''Sample x ~ p(x|y).
+    def p_x_i_given_z_i(self, x_i, z):
+        '''
+        - calculate the probability that an intensity x_i arrose from hidden
+            state z
 
         Args:
-
-            y (ndarray, int, shape (n,) or (m, n)):
-
-                Number of amino acids, congruent with x. If a 2D array is
-                given, x ~ p(x|y) is sampled for each row ``num_samples``
-                times.
-
-        Returns:
-
-            samples x as an ndarray of shape ``(num_samples, n)`` if ``y`` is
-            1D, or ``(num_samples, m, n)`` if ``y`` is 2D.
+            x_i:
+                the intensity value measured at time i
+            z_i:
+                the number of active/on fluorophores at time i
         '''
 
-        y = np.array(y)
+        x = self._bring_in(x_i)
 
-        if num_samples > 1:
-            size = (num_samples,) + y.shape
+        if z == 0:
+            mean_i = -np.inf
         else:
-            size = y.shape
+            mean_i = np.log(z * self.mu_i * np.exp(self.sigma_i2 / 2))
 
-        z = np.random.binomial(y, self.p_on, size=size)
+        mean_b = np.log(self.mu_b)
 
-        μ = self.μ + np.log(z) - self.q
-        σ = np.ones_like(μ)*self.σ
+        mean = np.log(np.exp(mean_i) + np.exp(mean_b))
+        sigma2 = self.sigma_i2 + self.sigma_b2
 
-        μ[z == 0] = 0
-        σ[z == 0] = self.σ2_background
+        result = self._integrate_from_cdf(x, mean, sigma2)
 
-        x = np.random.lognormal(μ, σ)
+        return result
 
-        return x
+    def _normal_cdf(self, x, mu, sigma2):
+        # CDF of the normal function
 
-    def maximum_a_posterior(self, x, ys):
-        '''Finds the maximum a posterior y* = argmax_y p(y|x) for x amongst the
-        given ys.
+        return 0.5 * (1 + math.erf((x - mu)/np.sqrt(2 * sigma2)))
 
-        Args:
+    def _integrate_from_cdf(self, x, mu, sigma):
+        # Aproximates the integral of the normal distribution x to x + 1/256
 
-            x (ndarray, float, shape (n,)):
+        a = self._normal_cdf(x, mu, sigma**2)
+        b = self._normal_cdf(x + (1/256), mu, sigma**2)
+        prob = np.abs(a - b)
 
-                Measurements for one protein.
+        return prob
 
-            y (ndarray, int, shape (m, n)):
+    def _bring_in(self, x):
 
-                Number of amino acids for ``m`` proteins.
+        return np.log(x)
 
-        Returns:
-            The index ``i`` into ``ys``, such that ``y* = ys[i]``.'''
+    def _bring_out(self, x):
+        return np.exp(x)
 
-        # p(y|x) = p(x|y)*p(y)/C ⇒ for uniform p(y), the posterior is
-        # proportional to p(x|y)
-        posterior = self.p_x_given_y(x, ys)
+    def _normal(self, x, mu, sigma2):
+        # PDF of the normal distribution
 
-        return np.argmax(posterior)
-
-    def p_x_i_given_z_i(self, x_i, z_i):
-
-        if z_i == 0:
-            μ = 0
-            σ2 = self.σ2_background
-        else:
-            μ = self.μ + np.log(z_i) - self.q
-            σ2 = self.σ2
-
-        return self.log_normal(x_i, μ, σ2)
-
-    def log_normal(self, x, μ, σ2):
-        return \
-            1.0 / (x * np.sqrt(2.0 * np.pi * σ2)) * \
-            np.exp(-(np.log(x) - μ)**2/(2.0 * σ2))
-
-    def p_z_i_given_y_i(self, z_i, y_i):
-
-        return scipy.stats.binom.pmf(z_i, y_i, self.p_on)
+        return 1.0 / (np.sqrt(2.0 * np.pi * sigma2)) * \
+                np.exp(-(x - mu)**2/(2.0 * sigma2))

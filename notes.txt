@@ -1,0 +1,14 @@
+Known Bugs:
+    1) Alogrithim is very sensitive to sigma_i, if sigma_i is too large it will 
+        underestimate Y because it is not punished for large spreads in intensity
+        -- Forward algorithm will break if sigma_i is too small, probability 
+            will go to 0 for incorrect zs
+            -- FIX: make a probability of 0 ok for the forward algorithm
+            
+            
+To do:
+    1) change consistancy test so that all parameters are sampled from a 
+        random distribution instead of predefined hard values
+        
+    - re-write all p_trace given z as vector operations applied to all x values in time series
+    - outter loop vmap over all z values
