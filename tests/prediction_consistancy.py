@@ -77,7 +77,7 @@ def scan_f(p_accumulated, p_emission, p_transition):
         - precalculated and stored in an array shape (y x y)
     
     '''
-    temp = p_emission * jnp.matmul(p_transition, p_accumulated)
+    temp = p_emission * jnp.matmul(p_accumulated, p_transition)
     scale_factor = 1 / jnp.sum(temp)
     prob_time_t = temp * scale_factor
     
@@ -88,6 +88,7 @@ def forward_alg_jax(probs, transition_m, p_init):
     
     initial_values = p_init[:] * probs[:,0]
     scale_factor_initial = 1 / jnp.sum(initial_values)
+    initial_values = initial_values * scale_factor_initial
     
     p_transition = transition_m
     
@@ -95,7 +96,8 @@ def forward_alg_jax(probs, transition_m, p_init):
                                                         p_emission, 
                                                         p_transition)
 
-    final, result = lax.scan(scan_f_2, p_init, probs.T)
+    b = jnp.moveaxis(probs, 0, 1)
+    final, result = lax.scan(scan_f_2, initial_values, b)
     
     return -1*(np.sum(np.log(result)))
 
@@ -186,15 +188,16 @@ class TestTraceModel(unittest.TestCase):
         
         probs_vmap = np.asarray(vmap_p_x_given_z(trace, y, mu_i, sigma_i2, mu_b, sigma_b2)).T
         
-        prob_t_model = t_model.p_trace_given_y(trace, y)
+        prob_t_model_y = t_model.p_trace_given_y(trace, y)
+        prob_t_model_prob = t_model.p_trace_given_probs(trace, y)
         
         p_initial, transition_m = t_model._markov_trace(y)
         prob_basic = _forward_alg(trace, y, transition_m, p_initial, mu_i, sigma_i2, mu_b, sigma_b2)
         
         prob_jax = forward_alg_jax(probs_vmap, transition_m, p_initial)
         
-        self.assertAlmostEqual(prob_basic, prob_t_model, places=0)
-        self.assertAlmostEqual(prob_jax, prob_t_model, places=-1)  
+        self.assertAlmostEqual(prob_basic, prob_t_model_y, places=2)
+        self.assertAlmostEqual(prob_basic, prob_t_model_prob, places=-1)  
         
         
         

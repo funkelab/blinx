@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.stats as stats
 from promap.fluorescence_model import FluorescenceModel
+from jax import lax
+import jax.numpy as jnp
 
 
 class TraceModel:
@@ -41,6 +43,15 @@ class TraceModel:
 
         p_initial, transition_m = self._markov_trace(y)
         log_fwrd_prob = self._forward_alg(trace, y, transition_m, p_initial)
+
+        return log_fwrd_prob
+
+    def p_trace_given_probs(self, trace, y):
+        self._check_parameters()
+
+        p_initial, transition_m = self._markov_trace(y)
+        probs = self.fluorescence_model.vmap_p_x_given_z(trace, y)
+        log_fwrd_prob = self._forward_alg_jax(probs, transition_m, p_initial)
 
         return log_fwrd_prob
 
@@ -235,3 +246,38 @@ class TraceModel:
             prev_prob = best_p_off_prob
 
         return best_p_on, best_p_off
+
+    def _forward_alg_jax(self, probs, transition_m, p_init):
+        initial_values = p_init[:] * probs[:, 0]
+        scale_factor_initial = 1 / jnp.sum(initial_values)
+        initial_values = initial_values * scale_factor_initial
+        p_transition = transition_m
+
+        scan_f_2 = lambda p_accumulate, p_emission: self._scan_f(p_accumulate,
+                                                                 p_emission, 
+                                                                 p_transition)
+
+        final, result = lax.scan(scan_f_2, initial_values, probs.T)
+
+        return -1*(np.sum(np.log(result)))
+
+    def _scan_f(self, p_accumulate, p_emission, p_transition):
+        '''
+        p_accu:
+            - accumulated probability from t=0 to t-1
+            - vector shape (1 x Y)
+
+        p_emission:
+            - probability of observing X given state z
+            - precalculated and stored in a array shape (t x y)
+
+        p_transtion:
+            - probability of transitioning from state z(t-1) to state z(t)
+            - precalculated and stored in an array shape (y x y)
+
+        '''
+        temp = p_emission * jnp.matmul(p_accumulate, p_transition)
+        scale_factor = 1 / jnp.sum(temp)
+        prob_time_t = temp * scale_factor
+
+        return prob_time_t, scale_factor
