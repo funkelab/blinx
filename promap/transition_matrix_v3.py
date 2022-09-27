@@ -153,7 +153,7 @@ def create_transition_matrix(
 
 if __name__ == '__main__':
 
-    y = 20
+    y = 3
     p_on = jnp.float32(0.1)
     p_off = jnp.float32(0.8)
 

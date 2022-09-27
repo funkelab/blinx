@@ -130,11 +130,11 @@ class FluorescenceModel:
 
         return 0.5 * (1 + jax.lax.erf((x - mu)/jnp.sqrt(2 * sigma2)))
 
-    def _jax_integrate_from_cdf(self, x, mu, sigma):
+    def _jax_integrate_from_cdf(self, x, mu, sigma2):
         # Aproximates the integral of the normal distribution from x:x+1/256
 
-        a = self._jax_normal_cdf(x, mu, sigma**2)
-        b = self._jax_normal_cdf(x + (1/256), mu, sigma**2)
+        a = self._jax_normal_cdf(x, mu, sigma2)
+        b = self._jax_normal_cdf(x + (1/256), mu, sigma2)
         prob = jnp.abs(a - b)
 
         return prob
@@ -156,11 +156,11 @@ class FluorescenceModel:
 
         return 0.5 * (1 + math.erf((x - mu)/np.sqrt(2 * sigma2)))
 
-    def _integrate_from_cdf(self, x, mu, sigma):
+    def _integrate_from_cdf(self, x, mu, sigma2):
         # Aproximates the integral of the normal distribution x to x + 1/256
 
-        a = self._normal_cdf(x, mu, sigma**2)
-        b = self._normal_cdf(x + (1/256), mu, sigma**2)
+        a = self._normal_cdf(x, mu, sigma2)
+        b = self._normal_cdf(x + (1/256), mu, sigma2)
         prob = np.abs(a - b)
 
         return prob
