@@ -90,7 +90,7 @@ class TraceModel:
         for i in range(len(states)):
             x_trace[i] = self.fluorescence_model.sample_x_i_given_z_i(states[i])
 
-        return x_trace
+        return x_trace, states
 
     def estimate_y(self, trace, guess, search_width):
 
@@ -181,71 +181,42 @@ class TraceModel:
                 self.fluorescence_model.p_x_i_given_z_i(x_trace[t], s)
 
         return p
+    
+    def _scale_viterbi(self, x_trace, y, T, trans_m, p_init):
+        "initialize"
+        delta = np.zeros((y+1, T))
+        sci = np.zeros((y+1, T))
+        scale = np.zeros((T))
+        ''' initial values '''
+        for s in range(y+1):
+            delta[s, 0] = p_init[s] * \
+                self.fluorescence_model.p_x_i_given_z_i(x_trace[0], s)
+        sci[:, 0] = 0
 
-    def _line_search_params(
-            self,
-            trace,
-            y,
-            points=100,
-            p_on_max=0.5,
-            p_off_max=0.5,
-            eps=1e-3,
-            max_iterations=3):
-        '''
-        '''
+        ''' Propagation'''
+        for t in range(1, T):
+            for s in range(y+1):
+                state_probs, ml_state = self._viterbi_mu(y, t, delta, trans_m, s)
+                delta[s, t] = state_probs * \
+                    self.fluorescence_model.p_x_i_given_z_i(x_trace[t], s)
+                sci[s, t] = ml_state
+            scale[t] = 1 / np.sum(delta[:, t])
+            delta[:, t] = delta[:, t] * scale[t]
 
-        p_ons = np.linspace(1e-6, p_on_max, points)
-        p_offs = np.linspace(1e-6, p_off_max, points)
+        ''' build to optimal model trajectory output'''
+        x = np.zeros((T))
+        x[-1] = np.argmax(delta[:, T-1])
+        for i in reversed(range(1, T)):
+            x[i-1] = sci[int(x[i]), i]
 
-        i = 0
-        prev_prob = None
-        self.p_off = np.mean(p_offs)
+        return x, delta, sci
 
-        while i <= max_iterations:
+    def _viterbi_mu(self, y, t, delta, trans_m, s):
+        temp = np.zeros((y+1))
+        for i in range(y+1):
+            temp[i] = delta[i, t-1] * trans_m[i, s]
+        return np.max(temp), np.argmax(temp)
 
-            best_p_on_prob = None
-            best_p_on = None
-
-            for p_on in p_ons:
-
-                self.p_on = p_on
-
-                prob = self.p_trace_given_y(trace, y)
-
-                if best_p_on_prob is None or prob > best_p_on_prob:
-                    best_p_on_prob = prob
-                    best_p_on = p_on
-
-            # set model to best p_on observed so far
-            self.p_on = best_p_on
-
-            best_p_off_prob = None
-            best_p_off = None
-
-            for p_off in p_offs:
-
-                self.p_off = p_off
-                prob = self.p_trace_given_y(trace, y)
-
-                if best_p_off_prob is None or prob > best_p_off_prob:
-                    best_p_off_prob = prob
-                    best_p_off = p_off
-
-            # set model to best p_off observed so far
-            self.p_off = best_p_off
-
-            i += 1
-
-            if prev_prob is not None:
-
-                delta_prob = best_p_off_prob - prev_prob
-                assert(delta_prob >= 0)
-                if delta_prob <= eps:
-                    break
-
-            prev_prob = best_p_off_prob
-
-        return best_p_on, best_p_off
 
     def _forward_alg_jax(self, probs, transition_m, p_init):
         initial_values = p_init[:] * probs[:, 0]
