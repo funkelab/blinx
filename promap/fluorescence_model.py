@@ -2,6 +2,7 @@ import numpy as np
 import math
 import jax
 import jax.numpy as jnp
+from jax import random
 
 
 class EmissionParams:
@@ -85,6 +86,34 @@ class FluorescenceModel:
         # split into sperate exps because changing background should
         # not change the estimate of mu_i
         return self._bring_out(signal) + self._bring_out(background)
+    
+    def sample_x_z_poisson_jax(self, z, seed):
+        ''' Samples a Poisson random variable '''
+        lam = self.mu_i * z +self.mu_b
+        key = random.PRNGKey(seed)
+        key, subkey = random.split(key)
+        value = random.poisson(subkey, lam)
+        
+        return value
+    
+    def sample_x_z_lognorm_jax(self, z, seed):
+        key = random.PRNGKey(seed)
+        key, subkey = random.split(key)
+        
+        mean = jnp.log(self.mu_i * z + self.mu_b)
+        
+        std_value = random.normal(key)
+        value = (std_value * self.sigma_i) + mean
+        
+        return jnp.exp(value)
+    
+    def vmap_p_x_given_z_lognorm(self, x, y):
+        zs = jnp.arange(0, y+1)
+        x = jnp.expand_dims(x, 0)
+
+        result = jax.vmap(self._p_trace_given_z_lognorm, in_axes=(1, None))(x, zs)
+
+        return np.asarray(result).T
 
     def vmap_p_x_given_z(self, x, y):
         '''
@@ -150,6 +179,25 @@ class FluorescenceModel:
         result = self._jax_integrate_from_cdf(x, mean, sigma2)
 
         return result
+    
+    def _p_trace_given_z_poisson(self, trace, z):
+        mu = z * self.mu_i + self.mu_b
+        prob = jax.scipy.stats.poisson.pmf(trace, mu=mu)
+        
+        return prob
+    
+    def _p_trace_given_z_lognorm(self, x, z):
+        
+        mean = jnp.log(self.mu_i * z + self.mu_b)
+        value_1 = jnp.log(x)
+        value_2 = value_1 + 1/256
+        
+        prob_1 = jax.scipy.stats.norm.cdf(value_1, loc=mean, scale=self.sigma_i)
+        prob_2 = jax.scipy.stats.norm.cdf(value_2, loc=mean, scale=self.sigma_i)
+        
+        prob = jnp.abs(prob_1 - prob_2)
+        
+        return prob
 
     def _normal_cdf(self, x, mu, sigma2):
         # CDF of the normal function

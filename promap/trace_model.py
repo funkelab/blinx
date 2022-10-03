@@ -104,6 +104,9 @@ class TraceModel:
                 '''
         
         transition_m = self.create_transition_matrix(y, self.p_on, self.p_off)
+        
+        # sum(rows) must always be = 1, rounding errors sometmes occur with 
+        # small numbers, -> force sum(rows) <= 1
         rounding_error = jnp.clip(jnp.sum(transition_m, axis=1) - 1, a_min=0)
         max_locs = jnp.argmax(transition_m, axis=1)
         row_indicies = jnp.arange(0,y+1)

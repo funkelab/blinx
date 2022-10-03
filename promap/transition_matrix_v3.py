@@ -2,7 +2,7 @@ from scipy.special import comb
 import jax
 import jax.numpy as jnp
 import time
-jnp.set_printoptions(precision=4, floatmode='fixed', suppress='true')
+jnp.set_printoptions(precision=8, floatmode='fixed', suppress='true')
 
 
 def create_comb_matrix(y, slanted=False):
@@ -154,8 +154,8 @@ def create_transition_matrix(
 if __name__ == '__main__':
 
     y = 3
-    p_on = jnp.float32(0.1)
-    p_off = jnp.float32(0.8)
+    p_on = jnp.float64(0.01)
+    p_off = jnp.float64(0.01)
 
     comb_matrix = create_comb_matrix(y)
     comb_matrix_slanted = create_comb_matrix(y, slanted=True)
@@ -187,3 +187,5 @@ if __name__ == '__main__':
 
     print(f"Transition matrix for y={y}, p_on={p_on}, p_off={p_off}"
           f"\n{transition_matrix}")
+    
+    
