@@ -5,6 +5,8 @@ from jax import lax
 import jax.numpy as jnp
 from scipy.special import comb
 import jax
+from jax import random
+
 
 
 class TraceModel:
@@ -59,8 +61,8 @@ class TraceModel:
 
     def set_params(self, p_on, p_off):
 
-        self.p_on = p_on
-        self.p_off = p_off
+        self.p_on = jnp.float32(p_on)
+        self.p_off = jnp.float32(p_off)
 
     def fit_params(self, traces, y, method='line_search', **kwargs):
         '''
@@ -74,23 +76,58 @@ class TraceModel:
             self._viterbi_fit_params(traces, y, **kwargs)
         return
 
-    def generate_trace(self, y):
-
-        self._check_parameters()
-
-        p_initial, transition_m = self._markov_trace(y)
-        # generate list of states
+    def generate_trace(self, y, seed, distribution='lognormal'):
+        # TODO: look into p_initial and breaking at high y values
+        # think it is breaking because sum(p_initial > 1)
+        # had same problem with _markov_trace
+        ''' generate a synthetic intensity trace 
+        
+        Args:
+            y (int):
+                - The maximum number of elements that can be on
+                
+            seed (int):
+                - random seed for the jax psudo rendom number generator
+                
+            distribution (string):
+                - either 'lognormal' or 'poisson'
+                - choice of distribution to sample intensities from
+            
+        Returns:
+            x_trace (array):
+                - an ordered array of length num_frames containing intensity 
+                    values for each frame
+            
+            states (array):
+                - array the same shape as x_trace, showing the hiddens state 
+                    "z" for each frame
+                '''
+        
+        transition_m = self.create_transition_matrix(y, self.p_on, self.p_off)
+        rounding_error = jnp.clip(jnp.sum(transition_m, axis=1) - 1, a_min=0)
+        max_locs = jnp.argmax(transition_m, axis=1)
+        row_indicies = jnp.arange(0,y+1)
+        transition_m = transition_m.at[row_indicies,max_locs].\
+            set(transition_m[row_indicies,max_locs] - 2* rounding_error)
+        
+        p_initial = transition_m[0,:]
+        # generate a list of states
         initial_state = list(stats.multinomial.rvs(1, p_initial)).index(1)
         states = [initial_state]
         for i in range(self.num_frames-1):
             p_tr = transition_m[states[-1], :]
             new_state = list(stats.multinomial.rvs(1, p_tr)).index(1)
             states.append(new_state)
-
-        # generate observations from list of states
         x_trace = np.ones((len(states)))
+        if distribution == 'lognormal':
+            sample_distribution = self.fluorescence_model.sample_x_z_lognorm_jax
+        if distribution == 'poisson':
+            sample_distribution = self.fluorescence_model.sample_x_z_poisson_jax
+            
+        key = random.PRNGKey(seed)
         for i in range(len(states)):
-            x_trace[i] = self.fluorescence_model.sample_x_i_given_z_i(states[i])
+            key, subkey = random.split(key)
+            x_trace[i] = sample_distribution(states[i], subkey[0])
 
         return x_trace, states
     
@@ -133,15 +170,17 @@ class TraceModel:
             elements changes from ``i`` to ``j``.
         '''
 
-        #if comb_matrix is None:
-        #     comb_matrix = self._create_comb_matrix(y)
-        #if comb_matrix_slanted is None:
-        #     comb_matrix_slanted = self._create_comb_matrix(y, slanted=True)
+        p_on = jnp.float32(p_on)
+        p_off = jnp.float32(p_off)
+        if comb_matrix is None:
+             comb_matrix = self._create_comb_matrix(y)
+        if comb_matrix_slanted is None:
+             comb_matrix_slanted = self._create_comb_matrix(y, slanted=True)
 
         max_y = comb_matrix.shape[0] - 1
 
-        prob_matrix_on = self._create_prob_matrix(y, p_on, slanted=True)
-        prob_matrix_off = self._create_prob_matrix(y, p_off)
+        prob_matrix_on = self._create_prob_matrix(y, jnp.float32(p_on), slanted=True)
+        prob_matrix_off = self._create_prob_matrix(y, jnp.float32(p_off))
 
         t_on_matrix = comb_matrix_slanted * prob_matrix_on
         t_off_matrix = comb_matrix * prob_matrix_off
@@ -290,7 +329,7 @@ class TraceModel:
 
         final, result = lax.scan(scan_f_2, initial_values, probs.T)
 
-        return -1*(np.sum(np.log(result)))
+        return -1*(jnp.sum(jnp.log(result)))
 
     def _scan_f(self, p_accumulate, p_emission, p_transition):
         '''
