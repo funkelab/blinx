@@ -96,13 +96,13 @@ class FluorescenceModel:
         
         return value
     
-    def sample_x_z_lognorm_jax(self, z, seed):
-        key = random.PRNGKey(seed)
-        key, subkey = random.split(key)
+    def sample_x_z_lognorm_jax(self, z, key, shape=(1,1)):
+        #key = random.PRNGKey(seed)
+        #key, subkey = random.split(key)
         
         mean = jnp.log(self.mu_i * z + self.mu_b)
         
-        std_value = random.normal(key)
+        std_value = random.normal(key, shape)
         value = (std_value * self.sigma_i) + mean
         
         return jnp.exp(value)

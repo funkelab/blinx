@@ -115,25 +115,42 @@ class TraceModel:
         
         p_initial = transition_m[0,:]
         # generate a list of states
-        initial_state = list(stats.multinomial.rvs(1, p_initial)).index(1)
-        states = [initial_state]
-        for i in range(self.num_frames-1):
-            p_tr = transition_m[states[-1], :]
-            new_state = list(stats.multinomial.rvs(1, p_tr)).index(1)
-            states.append(new_state)
-        x_trace = np.ones((len(states)))
+        p_initial = jnp.log(transition_m[0,:])
+        key = random.PRNGKey(seed)
+        key, subkey = random.split(key)
+        initial_state = jnp.expand_dims(random.categorical(subkey, p_initial), axis=0)
+
+        # # generate a list of states
+        
+       
+        #subkeys = jnp.expand_dims(random.split(key, num=self.num_frames), axis=2)
+        subkeys = random.split(key, num=self.num_frames)
+        
+        scan2 = lambda state, key: self._scan(state, key, transition_m)
+        
+        a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
+        
         if distribution == 'lognormal':
             sample_distribution = self.fluorescence_model.sample_x_z_lognorm_jax
         if distribution == 'poisson':
             sample_distribution = self.fluorescence_model.sample_x_z_poisson_jax
             
         key = random.PRNGKey(seed)
-        for i in range(len(states)):
-            key, subkey = random.split(key)
-            x_trace[i] = sample_distribution(states[i], subkey[0])
+        subkey = random.split(key)
+        x_trace = sample_distribution(jnp.asarray(states), subkey[0], shape=states.shape)
 
         return x_trace, states
     
+    def _update_state(self, subkey, p_tr):
+        state = random.categorical(subkey, p_tr)
+        return state
+
+    def _scan(self, old_state, key, transition_m):
+        #key, subkey = random.split(key)
+        p_tr = jnp.log(transition_m[old_state,:])
+        new_state =self._update_state(key, p_tr)
+        
+        return new_state, new_state
     def create_transition_matrix(self,
             y,
             p_on,
