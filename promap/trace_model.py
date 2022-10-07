@@ -139,7 +139,7 @@ class TraceModel:
         subkey = random.split(key)
         x_trace = sample_distribution(jnp.asarray(states), subkey[0], shape=states.shape)
 
-        return x_trace, states
+        return x_trace[:,0], states
     
     def _update_state(self, subkey, p_tr):
         state = random.categorical(subkey, p_tr)

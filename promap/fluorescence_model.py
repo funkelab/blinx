@@ -113,7 +113,7 @@ class FluorescenceModel:
 
         result = jax.vmap(self._p_trace_given_z_lognorm, in_axes=(1, None))(x, zs)
 
-        return np.asarray(result).T
+        return result.T
 
     def vmap_p_x_given_z(self, x, y):
         '''
