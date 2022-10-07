@@ -26,7 +26,7 @@ if __name__ == '__main__':
     best_y = None
     
     # Calc likelyhood that trace arrose from different y values
-    ys = np.arange(1,11)
+    ys = np.arange(3,11)
     start = time.time()
     for y in ys:
         likelyhood, p_on, p_off, mu, sigma = fit_functions.optimize_params(y, x_trace)
