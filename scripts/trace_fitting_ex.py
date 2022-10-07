@@ -14,7 +14,7 @@ if __name__ == '__main__':
     seed = 100
     e_params = EmissionParams(mu_i = 50, sigma_i = 0.03, mu_b=200, sigma_b=0.15)
     t_model_t = TraceModel(e_params, 0.1, 4000)
-    t_model_t.set_params(jnp.float32(0.05), jnp.float32(0.05))
+    t_model_t.set_params(0.05, 0.05)
     x_trace, states = t_model_t.generate_trace(y_test, seed=seed)
     
     plt.plot(x_trace[:1000])

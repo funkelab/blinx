@@ -4,7 +4,7 @@ from scipy.special import comb
 
 
 
-class transition_matrix:
+class TransitionMatrix:
     
     def __init__(self):
         
