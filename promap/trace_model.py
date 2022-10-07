@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats as stats
 from promap.fluorescence_model import FluorescenceModel
+from promap.transition_matrix import TransitionMatrix
 from jax import lax
 import jax.numpy as jnp
 from scipy.special import comb
@@ -85,8 +86,13 @@ class TraceModel:
                 - array the same shape as x_trace, showing the hiddens state 
                     "z" for each frame
                 '''
+        TransMatrix = TransitionMatrix()
+        transition_m = TransMatrix.create_transition_matrix(y, 
+                                                                  self.p_on, 
+                                                                  self.p_off)
         
-        transition_m = self.create_transition_matrix(y, self.p_on, self.p_off)
+        
+        #transition_m = self.create_transition_matrix(y, self.p_on, self.p_off)
         
         # sum(rows) must always be = 1, rounding errors sometmes occur with 
         # small numbers, -> force sum(rows) <= 1
