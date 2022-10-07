@@ -9,7 +9,6 @@ import jax
 from jax import random
 
 
-
 class TraceModel:
     '''
     - Models an intensity trace as a hidden Markov model
@@ -49,6 +48,7 @@ class TraceModel:
         self.p_off = jnp.float32(p_off)
 
     def fit_params(self, traces, y, method='line_search', **kwargs):
+        # TODO: change so that it calls instance of fit_params
         '''
         Fit all the parameters needed for the trace model
             p_on, p_off
@@ -60,10 +60,12 @@ class TraceModel:
             self._viterbi_fit_params(traces, y, **kwargs)
         return
 
+    def plot_trace():
+        # TODO: make function that plots trace nicely
+        
+        return
+
     def generate_trace(self, y, seed, distribution='lognormal'):
-        # TODO: look into p_initial and breaking at high y values
-        # think it is breaking because sum(p_initial > 1)
-        # had same problem with _markov_trace
         ''' generate a synthetic intensity trace 
         
         Args:
@@ -87,14 +89,10 @@ class TraceModel:
                     "z" for each frame
                 '''
         TransMatrix = TransitionMatrix()
-        transition_m = TransMatrix.create_transition_matrix(y, 
-                                                                  self.p_on, 
-                                                                  self.p_off)
+        transition_m = TransMatrix.create_transition_matrix(y, self.p_on, 
+                                                               self.p_off)
         
-        
-        #transition_m = self.create_transition_matrix(y, self.p_on, self.p_off)
-        
-        # sum(rows) must always be = 1, rounding errors sometmes occur with 
+        # sum(rows) must always be = 1, rounding errors sometimes occur with 
         # small numbers, -> force sum(rows) <= 1
         rounding_error = jnp.clip(jnp.sum(transition_m, axis=1) - 1, a_min=0)
         max_locs = jnp.argmax(transition_m, axis=1)
@@ -102,21 +100,17 @@ class TraceModel:
         transition_m = transition_m.at[row_indicies,max_locs].\
             set(transition_m[row_indicies,max_locs] - 2* rounding_error)
         
-        p_initial = transition_m[0,:]
-        # generate a list of states
-        p_initial = jnp.log(transition_m[0,:])
+        # quick estiamte of p_initial values
+        p_initial = jnp.log(transition_m[0,:]) # jax.random.catigorical takes log probs 
+        
+        # generate a list of states, use scan b/c state t depends on state t-1
         key = random.PRNGKey(seed)
         key, subkey = random.split(key)
         initial_state = jnp.expand_dims(random.categorical(subkey, p_initial), axis=0)
 
-        # # generate a list of states
-        
-       
-        #subkeys = jnp.expand_dims(random.split(key, num=self.num_frames), axis=2)
-        subkeys = random.split(key, num=self.num_frames)
-        
         scan2 = lambda state, key: self._scan(state, key, transition_m)
         
+        subkeys = random.split(key, num=self.num_frames)
         a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
         
         if distribution == 'lognormal':
@@ -135,7 +129,6 @@ class TraceModel:
         return state
 
     def _scan(self, old_state, key, transition_m):
-        #key, subkey = random.split(key)
         p_tr = jnp.log(transition_m[old_state,:])
         new_state =self._update_state(key, p_tr)
         
@@ -143,6 +136,7 @@ class TraceModel:
    
     
     def estimate_y(self, trace, guess, search_width):
+        # TODO: replace with function that 
 
         self._check_parameters()
 
