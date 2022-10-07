@@ -62,30 +62,7 @@ class FluorescenceModel:
         self.sigma_b2 = emission_params.sigma_b**2
         self.label_eff = emission_params.label_eff
 
-    def sample_x_i_given_z_i(self, z):
-        '''
-        - simulate the intensity value given a hidden state "z"
-        - random sampling is done in log-space
-            - sample from a normal distribution
-            - exp() at end so final distribution is lognormal
 
-        Args:
-            z:
-                The number of active/on fluorophores
-        '''
-
-        if z == 0:
-            signal = -np.inf  # has no contribution once out of log space
-        else:
-            mean_i = np.log(z * self.mu_i * np.exp(self.sigma_i2 / 2))
-            signal = np.random.normal(mean_i, self.sigma_i2)
-
-        mean_b = np.log(self.mu_b)
-        background = np.random.normal(mean_b, self.sigma_b2)
-
-        # split into sperate exps because changing background should
-        # not change the estimate of mu_i
-        return self._bring_out(signal) + self._bring_out(background)
     
     def sample_x_z_poisson_jax(self, z, seed):
         ''' Samples a Poisson random variable '''
