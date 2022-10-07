@@ -103,33 +103,6 @@ class FluorescenceModel:
 
         return np.asarray(result).T
 
-    def p_x_i_given_z_i(self, x_i, z):
-        '''
-        - calculate the probability that an intensity x_i arrose from hidden
-            state z
-
-        Args:
-            x_i:
-                the intensity value measured at time i
-            z_i:
-                the number of active/on fluorophores at time i
-        '''
-
-        x = self._bring_in(x_i)
-
-        if z == 0:
-            mean_i = -np.inf
-        else:
-            mean_i = np.log(z * self.mu_i * np.exp(self.sigma_i2 / 2))
-
-        mean_b = np.log(self.mu_b)
-
-        mean = np.log(np.exp(mean_i) + np.exp(mean_b))
-        sigma2 = self.sigma_i2 + self.sigma_b2
-
-        result = self._integrate_from_cdf(x, mean, sigma2)
-
-        return result
 
     def _jax_normal_cdf(self, x, mu, sigma2):
         # CDF of the normal function
