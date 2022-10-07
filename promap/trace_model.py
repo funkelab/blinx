@@ -1,10 +1,8 @@
 import numpy as np
-import scipy.stats as stats
 from promap.fluorescence_model import FluorescenceModel
 from promap.transition_matrix import TransitionMatrix
 from jax import lax
 import jax.numpy as jnp
-from scipy.special import comb
 import jax
 from jax import random
 
@@ -41,7 +39,6 @@ class TraceModel:
         self.num_frames = num_frames
         self.fluorescence_model = FluorescenceModel(emission_params)
 
-
     def set_params(self, p_on, p_off):
 
         self.p_on = jnp.float32(p_on)
@@ -62,81 +59,83 @@ class TraceModel:
 
     def plot_trace():
         # TODO: make function that plots trace nicely
-        
+
         return
 
     def generate_trace(self, y, seed, distribution='lognormal'):
-        ''' generate a synthetic intensity trace 
-        
+        ''' generate a synthetic intensity trace
+
         Args:
             y (int):
                 - The maximum number of elements that can be on
-                
+
             seed (int):
                 - random seed for the jax psudo rendom number generator
-                
+
             distribution (string):
                 - either 'lognormal' or 'poisson'
                 - choice of distribution to sample intensities from
-            
+
         Returns:
             x_trace (array):
-                - an ordered array of length num_frames containing intensity 
+                - an ordered array of length num_frames containing intensity
                     values for each frame
-            
+
             states (array):
-                - array the same shape as x_trace, showing the hiddens state 
+                - array the same shape as x_trace, showing the hiddens state
                     "z" for each frame
                 '''
         TransMatrix = TransitionMatrix()
-        transition_m = TransMatrix.create_transition_matrix(y, self.p_on, 
-                                                               self.p_off)
-        
-        # sum(rows) must always be = 1, rounding errors sometimes occur with 
+        transition_m = TransMatrix.create_transition_matrix(y, self.p_on,
+                                                            self.p_off)
+
+        # sum(rows) must always be = 1, rounding errors sometimes occur with
         # small numbers, -> force sum(rows) <= 1
         rounding_error = jnp.clip(jnp.sum(transition_m, axis=1) - 1, a_min=0)
         max_locs = jnp.argmax(transition_m, axis=1)
-        row_indicies = jnp.arange(0,y+1)
-        transition_m = transition_m.at[row_indicies,max_locs].\
-            set(transition_m[row_indicies,max_locs] - 2* rounding_error)
-        
+        row_indicies = jnp.arange(0, y+1)
+        transition_m = transition_m.at[row_indicies, max_locs].\
+            set(transition_m[row_indicies, max_locs] - 2 * rounding_error)
+
         # quick estiamte of p_initial values
-        p_initial = jnp.log(transition_m[0,:]) # jax.random.catigorical takes log probs 
-        
+        p_initial = jnp.log(transition_m[0, :])
+        # jax.random.catigorical takes log probs
+
         # generate a list of states, use scan b/c state t depends on state t-1
         key = random.PRNGKey(seed)
         key, subkey = random.split(key)
-        initial_state = jnp.expand_dims(random.categorical(subkey, p_initial), axis=0)
+        initial_state = jnp.expand_dims(random.categorical(subkey, p_initial),
+                                        axis=0)
 
         scan2 = lambda state, key: self._scan(state, key, transition_m)
-        
+
         subkeys = random.split(key, num=self.num_frames)
         a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
-        
+
         if distribution == 'lognormal':
             sample_distribution = self.fluorescence_model.sample_x_z_lognorm_jax
         if distribution == 'poisson':
             sample_distribution = self.fluorescence_model.sample_x_z_poisson_jax
-            
+
         key = random.PRNGKey(seed)
         subkey = random.split(key)
-        x_trace = sample_distribution(jnp.asarray(states), subkey[0], shape=states.shape)
+        x_trace = sample_distribution(jnp.asarray(states), subkey[0],
+                                      shape=states.shape)
 
-        return x_trace[:,0], states
-    
+        return x_trace[:, 0], states
+
     def _update_state(self, subkey, p_tr):
         state = random.categorical(subkey, p_tr)
         return state
 
     def _scan(self, old_state, key, transition_m):
-        p_tr = jnp.log(transition_m[old_state,:])
-        new_state =self._update_state(key, p_tr)
-        
+        p_tr = jnp.log(transition_m[old_state, :])
+        new_state = self._update_state(key, p_tr)
+
         return new_state, new_state
-   
-    
+
     def estimate_y(self, trace, guess, search_width):
-        # TODO: replace with function that 
+        # TODO: replace with function that
 
         self._check_parameters()
 
@@ -151,7 +150,6 @@ class TraceModel:
 
         if self.p_on is None:
             raise RuntimeError("Parameters need to be set or fitted first.")
-
 
     def _forward_alg(self, x_trace, y, transition_m, p_init):
 
@@ -187,7 +185,7 @@ class TraceModel:
                 self.fluorescence_model.p_x_i_given_z_i(x_trace[t], s)
 
         return p
-    
+
     def _scale_viterbi(self, x_trace, y, T, trans_m, p_init):
         "initialize"
         delta = np.zeros((y+1, T))
@@ -202,7 +200,8 @@ class TraceModel:
         ''' Propagation'''
         for t in range(1, T):
             for s in range(y+1):
-                state_probs, ml_state = self._viterbi_mu(y, t, delta, trans_m, s)
+                state_probs, ml_state = self._viterbi_mu(y, t, delta,
+                                                         trans_m, s)
                 delta[s, t] = state_probs * \
                     self.fluorescence_model.p_x_i_given_z_i(x_trace[t], s)
                 sci[s, t] = ml_state
@@ -230,7 +229,7 @@ class TraceModel:
         p_transition = transition_m
 
         scan_f_2 = lambda p_accumulate, p_emission: self._scan_f(p_accumulate,
-                                                                 p_emission, 
+                                                                 p_emission,
                                                                  p_transition)
 
         final, result = lax.scan(scan_f_2, initial_values, probs.T)
@@ -257,6 +256,3 @@ class TraceModel:
         prob_time_t = temp * scale_factor
 
         return prob_time_t, scale_factor
-    
-    
-    
