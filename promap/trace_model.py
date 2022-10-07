@@ -41,23 +41,6 @@ class TraceModel:
         self.num_frames = num_frames
         self.fluorescence_model = FluorescenceModel(emission_params)
 
-    def p_trace_given_y(self, trace, y):
-
-        self._check_parameters()
-
-        p_initial, transition_m = self._markov_trace(y)
-        log_fwrd_prob = self._forward_alg(trace, y, transition_m, p_initial)
-
-        return log_fwrd_prob
-
-    def p_trace_given_probs(self, trace, y):
-        self._check_parameters()
-
-        p_initial, transition_m = self._markov_trace(y)
-        probs = self.fluorescence_model.vmap_p_x_given_z(trace, y)
-        log_fwrd_prob = self._forward_alg_jax(probs, transition_m, p_initial)
-
-        return log_fwrd_prob
 
     def set_params(self, p_on, p_off):
 
