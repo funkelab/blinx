@@ -144,4 +144,7 @@ def _create_prob_matrix(y, p, slanted=False):
                 return prob_i_j(i, j)
         return jax.vmap(prob_i_fun)(j_indices)
 
-    return jax.vmap(prob_i)(i_indices)
+    #return jax.vmap(prob_i)(i_indices)
+    # need to clip for slanted=True, because blows up to infinity,
+    # but every inf corresponds to a 0 so deosnt matter if clip to 1
+    return jnp.clip(jax.vmap(prob_i)(i_indices),a_min=0, a_max=1)
