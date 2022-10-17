@@ -42,13 +42,17 @@ def optimize_params(y, trace,
     # TODO: change learning rate for different parameters
     #       - currently way to low for mu
     #       - add a seperate optimizer?
+    # when underestimating count, training loop reaches a point where only mu is changing
 
     likelihood_grad_func = _create_likelihood_grad_func(y)  # creates a new loss function
                                            # for the given y value
 
     params = (p_on_guess, p_off_guess, mu_guess, sigma_guess)
-    optimizer = optax.adam(learning_rate=1e-4)
+    optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
     opt_state = optimizer.init(params)
+    optax.keep_params_nonnegative() # works almost too well
+    
+    
 
     old_likelihood = 1
     diff = 10
@@ -57,20 +61,23 @@ def optimize_params(y, trace,
     mu = mu_guess
     sigma = sigma_guess
 
-    while diff > 1e-4:
+    while diff > 1e-3:
 
         likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
                                                  trace)
-
+        print(grads[0], grads[1], grads[2], grads[3])
+        
         updates, opt_state = optimizer.update(grads, opt_state)
-
+        print(updates)
         p_on, p_off, mu, sigma = optax.apply_updates((p_on, p_off, mu,
                                                       sigma), updates)
 
         diff = jnp.abs(likelihood - old_likelihood)
         old_likelihood = likelihood
+        
 
-
+        print(f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}, {mu:.4f}, {sigma:.4f}')
+        print('-'*50)
     return -1*likelihood, p_on, p_off, mu, sigma
 
 def _create_likelihood_grad_func(y):

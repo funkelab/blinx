@@ -72,7 +72,7 @@ class TraceModel:
         transition_m = transition_m.at[row_indicies, max_locs].\
             set(transition_m[row_indicies, max_locs] - 2 * rounding_error)
 
-        # quick estiamte of p_initial values
+        # quick estiamte of p_initial values, WRONG!! (but works well enough)
         p_initial = jnp.log(transition_m[0, :])
         # jax.random.catigorical takes log probs
 
@@ -83,8 +83,10 @@ class TraceModel:
                                         axis=0)
 
         scan2 = lambda state, key: self._scan_generate(state, key, transition_m)
-
-        subkeys = random.split(key, num=num_frames)
+        
+        # add 100 frames, then remove first 100 to allow system to 
+        # come to equillibrium
+        subkeys = random.split(key, num=num_frames+100)
         a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
 
         if distribution == 'lognormal':
@@ -97,7 +99,7 @@ class TraceModel:
         x_trace = sample_distribution(jnp.asarray(states), subkey[0],
                                       shape=states.shape)
 
-        return x_trace[:, 0], states
+        return x_trace[100:, 0], states[100:]
     
     def get_likelihood(self, probs, transition_m, p_init):
         ''' 

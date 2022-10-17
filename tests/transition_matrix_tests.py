@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import EmissionParams
-from promap.transition_matrix import TransitionMatrix
+from promap import transition_matrix
 import jax.numpy as jnp
 from scipy import stats
 
@@ -31,16 +31,15 @@ class TestTransitionMatrix(unittest.TestCase):
         p_on = 0.1
         p_off = 0.1
         
-        TransMatrix = TransitionMatrix()
-        transition_matrix = TransMatrix.create_transition_matrix(y,
+        transition_mat = transition_matrix.create_transition_matrix(y,
                                                                  p_on,
                                                                  p_off)
         
         # check no zeros in transition_matrix
-        self.assertTrue(transition_matrix.all())
+        self.assertTrue(transition_mat.all())
         
         # check all rows sum to 1
-        row_sums = jnp.sum(transition_matrix, axis=1)
+        row_sums = jnp.sum(transition_mat, axis=1)
         ones = jnp.ones((y+1))
         self.assertEqual(row_sums.all(), ones.all())
 
@@ -49,18 +48,31 @@ class TestTransitionMatrix(unittest.TestCase):
         p_on = 0.1
         p_off = 0.1
         
-        TransMatrix = TransitionMatrix()
-        transition_matrix_jax = TransMatrix.create_transition_matrix(y,
+        transition_mat_jax = transition_matrix.create_transition_matrix(y,
                                                                      p_on,
                                                                      p_off)
         
-        transition_matrix_truth = jnp.asarray(create_transition_m_truth(y,
+        transition_mat_truth = jnp.asarray(create_transition_m_truth(y,
                                                             p_on,
                                                             p_off))
         
-        arrays_match = jnp.unique(jnp.isclose(transition_matrix_jax, 
-                                       transition_matrix_truth))
+        arrays_match = jnp.unique(jnp.isclose(transition_mat_jax, 
+                                       transition_mat_truth))
         self.assertTrue(arrays_match)
+        
+    def test_large_numbers(self):
+        y= 50
+        p_on = 0.05
+        p_off = 0.05
+        
+        transition_mat_jax = transition_matrix.create_transition_matrix(y,
+                                                                     p_on,
+                                                                     p_off)
+        
+        test_value = jnp.min(transition_mat_jax)
+        array_include_nan = jnp.isnan(test_value)
+        
+        self.assertFalse(array_include_nan)
     
 
 if __name__ == '__main__':
