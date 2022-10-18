@@ -15,7 +15,7 @@ if __name__ == '__main__':
     t_model_t = TraceModel(e_params, p_on=0.05, p_off=0.05)
     x_trace, states = t_model_t.generate_trace(y_test, seed=seed,
                                                num_frames=4000)
-
+  
     plt.plot(x_trace[:1000])
     plt.show()
 

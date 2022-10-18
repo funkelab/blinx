@@ -1,7 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import skimage
-from scipy.ndimage import maximum_filter
 import pandas as pd
 import h5py
 
@@ -75,9 +73,11 @@ def extract_trace(image_file_path,
     
     return trace
 
+
 if __name__ == '__main__':
     image_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1.tif'
     pick_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_picked.hdf5'
     drift_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_221014_110734_drift.txt'
-
+    
+    
     trace = extract_trace(image_file_path, pick_file_path, drift_file_path, spot_num=9)
