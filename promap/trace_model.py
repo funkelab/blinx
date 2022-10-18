@@ -60,9 +60,9 @@ class TraceModel:
                 - array the same shape as x_trace, showing the hiddens state
                     "z" for each frame
                 '''
-        
+
         transition_m = transition_matrix.create_transition_matrix(y, self.p_on,
-                                                            self.p_off)
+                                                                  self.p_off)
 
         # sum(rows) must always be = 1, rounding errors sometimes occur with
         # small numbers, -> force sum(rows) <= 1
@@ -83,8 +83,8 @@ class TraceModel:
                                         axis=0)
 
         scan2 = lambda state, key: self._scan_generate(state, key, transition_m)
-        
-        # add 100 frames, then remove first 100 to allow system to 
+
+        # add 100 frames, then remove first 100 to allow system to
         # come to equillibrium
         subkeys = random.split(key, num=num_frames+100)
         a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
@@ -100,9 +100,9 @@ class TraceModel:
                                       shape=states.shape)
 
         return x_trace[100:, 0], states[100:]
-    
+
     def get_likelihood(self, probs, transition_m, p_init):
-        ''' 
+        '''
         TODO: add a docstring
         '''
         initial_values = p_init[:] * probs[:, 0]
@@ -129,7 +129,6 @@ class TraceModel:
 
         if self.p_on is None:
             raise RuntimeError("Parameters need to be set or fitted first.")
-
 
     def _scale_viterbi(self, x_trace, y, T, trans_m, p_init):
         "initialize"
@@ -166,8 +165,6 @@ class TraceModel:
         for i in range(y+1):
             temp[i] = delta[i, t-1] * trans_m[i, s]
         return np.max(temp), np.argmax(temp)
-
-
 
     def _scan_likelihood(self, p_accumulate, p_emission, p_transition):
         '''
