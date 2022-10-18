@@ -7,7 +7,8 @@ import h5py
 def extract_trace(image_file_path,
                   pick_file_path,
                   drift_file_path,
-                  spot_num):
+                  spot_num,
+                  pixels=0):
     '''
     Extracts an intensity trace from a DNA-PAINT movie
 
@@ -26,6 +27,12 @@ def extract_trace(image_file_path,
                 of the tiff movie
             - generated as an output of picasso localize, running undrift RCC,
                 or undrift from picks
+        
+        pixels (int):
+            - the radius of a grid around the ceter pixel to include in the
+                intensity value measurement for each frame
+            - ex. pixels = 1 measures a 3x3 grid, and sums all 9 values to get
+                the intensity measurement for each frame
 
     Returns:
         trace (1D array):
@@ -61,7 +68,11 @@ def extract_trace(image_file_path,
     # extract intensity of drfiting structure for all frames
     # TODO: - measure more than single pixel area?
     #       - integrate and convert to photon count?
-    trace = image[ys, xs, total_frames]
+    x_list, y_list = array_list(image, xs, ys, pixels)
+    
+    image_crop = image[y_list, x_list, total_frames]
+    
+    trace = np.sum(image_crop, axis=0)
 
     return trace
 
@@ -81,10 +92,21 @@ def _read_image(file_path):
     return np_img
 
 
+def array_list(image, xs, ys, pixels):
+    x_list = []
+    y_list = []
+    for x in range(-pixels, pixels+1):
+        for y in range(-pixels, pixels+1):
+            x_list.append(xs + x)
+            y_list.append(ys + y)
+    
+    return x_list, y_list
+
+
 if __name__ == '__main__':
     image_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1.tif'
     pick_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_picked.hdf5'
     drift_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_221014_110734_drift.txt'
 
     trace = extract_trace(image_file_path, pick_file_path, drift_file_path,
-                          spot_num=9)
+                          spot_num=9, pixels=2)
