@@ -65,10 +65,10 @@ def optimize_params(y, trace,
 
         likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
                                                  trace)
-        print(grads[0], grads[1], grads[2], grads[3])
+        print(f'{grads[0]:.2f}, {grads[1]:.2f}, {grads[2]:.2f}, {grads[3]:.2f}')
         
         updates, opt_state = optimizer.update(grads, opt_state)
-        print(updates)
+        #print(updates)
         p_on, p_off, mu, sigma = optax.apply_updates((p_on, p_off, mu,
                                                       sigma), updates)
 
