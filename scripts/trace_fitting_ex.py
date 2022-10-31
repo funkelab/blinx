@@ -9,7 +9,7 @@ if __name__ == '__main__':
     # generate a test trace
     y_test = 5
     seed = 100
-    e_params = EmissionParams(mu_i=50, sigma_i=0.03, mu_b=200, sigma_b=0.15)
+    e_params = EmissionParams(mu_i=50, sigma_i=0.03, mu_b=300, sigma_b=0.15)
     t_model_t = TraceModel(e_params, p_on=0.05, p_off=0.05)
     x_trace, states = t_model_t.generate_trace(y_test, seed=seed,
                                                num_frames=4000)
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     ys = [5]
     start = time.time()
     for y in ys:
-        likelihood, p_on, p_off, mu, sigma = fit.optimize_params(y, x_trace)
+        likelihood, p_on, p_off, mu, sigma = fit.optimize_params(y, x_trace, mu_b_guess=300)
 
         print('- '*20)
         print(f'y = {y}')

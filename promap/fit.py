@@ -9,7 +9,8 @@ def optimize_params(y, trace,
                     p_on_guess=0.1,
                     p_off_guess=0.1,
                     mu_guess=50.,
-                    sigma_guess=0.2):
+                    sigma_guess=0.2,
+                    mu_b_guess=200):
 
     '''
     Use gradient descent to fit kinetic (p_on / off) and emission
@@ -44,7 +45,8 @@ def optimize_params(y, trace,
     #       - add a seperate optimizer?
     # when underestimating count, training loop reaches a point where only mu is changing
 
-    likelihood_grad_func = _create_likelihood_grad_func(y)  # creates a new loss function
+    likelihood_grad_func = _create_likelihood_grad_func(y, mu_b_guess)
+                                           # creates a new loss function
                                            # for the given y value
 
     params = (p_on_guess, p_off_guess, mu_guess, sigma_guess)
@@ -64,7 +66,7 @@ def optimize_params(y, trace,
     while diff > 1e-3:
 
         likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
-                                                 trace)
+                                                 trace, mu_b_guess)
         print(f'{grads[0]:.2f}, {grads[1]:.2f}, {grads[2]:.2f}, {grads[3]:.2f}')
         
         updates, opt_state = optimizer.update(grads, opt_state)
@@ -80,7 +82,7 @@ def optimize_params(y, trace,
         print('-'*50)
     return -1*likelihood, p_on, p_off, mu, sigma
 
-def _create_likelihood_grad_func(y):
+def _create_likelihood_grad_func(y, mu_b_guess=200):
     '''
     Helper function that creates a loss function used to fit parameters
     p_on, p_off, mu, and simga
@@ -94,8 +96,8 @@ def _create_likelihood_grad_func(y):
         when given values for p_on, p_off, mu, and sigma
     '''
 
-    def likelihood_func(p_on, p_off, mu, sigma, trace):
-        e_params = EmissionParams(mu_i=mu, sigma_i=sigma, mu_b=200,
+    def likelihood_func(p_on, p_off, mu, sigma, trace, mu_b_guess=200):
+        e_params = EmissionParams(mu_i=mu, sigma_i=sigma, mu_b=mu_b_guess,
                                   sigma_b=0.05)
         t_model = TraceModel(e_params)
 
