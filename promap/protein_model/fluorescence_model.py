@@ -11,7 +11,7 @@ class FluorescenceModel:
 
         y_i ∈ ℕ (count of amino acid i)
         z_i ∈ ℕ (number of active dyes for amino acid i)
-        x_i ∈ ℝ (total flourescence of active dyes for amino acid i)
+        x_i ∈ ℝ (total fluorescence of active dyes for amino acid i)
 
         # independent per dye
         p(x|y) = Σ_i p(x_i|y_i)
@@ -22,7 +22,7 @@ class FluorescenceModel:
         # dye activity is binomial
         p(z_i|y_i) ~ B(y_i, p_on)
 
-        # flourescence follows log-normal distribution
+        # fluorescence follows log-normal distribution
         p(x*_i|z_i) = sqrt(2πσ_i²)^-1 exp[ -(x*_i - μ_i - ln z_i + q_z_i)² ]
 
     Args:
@@ -41,7 +41,7 @@ class FluorescenceModel:
             to be 0).
 
         q:
-            Dye-dye interaction factor (see Mutch et al., Biophusical Journal,
+            Dye-dye interaction factor (see Mutch et al., Biophysical Journal,
             2007, Deconvolving Single-Molecule Intensity Distributions for
             Quantitative Microscopy Measurements)
     '''

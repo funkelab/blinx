@@ -1,5 +1,5 @@
 Known Bugs:
-    1) Alogrithim is very sensitive to sigma_i, if sigma_i is too large it will 
+    1) Algorithm is very sensitive to sigma_i, if sigma_i is too large it will 
         underestimate Y because it is not punished for large spreads in intensity
         -- Forward algorithm will break if sigma_i is too small, probability 
             will go to 0 for incorrect zs
@@ -11,4 +11,4 @@ To do:
         random distribution instead of predefined hard values
         
     - re-write all p_trace given z as vector operations applied to all x values in time series
-    - outter loop vmap over all z values
+    - outer loop vmap over all z values

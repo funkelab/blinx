@@ -13,7 +13,7 @@ def extract_trace(image_file_path,
     Extracts an intensity trace from a DNA-PAINT movie
 
     Args:
-        iamge_file_path (string):
+        image_file_path (string):
             - path to a tiff movie of blinking events
 
         pick_file_path (string):
@@ -22,14 +22,14 @@ def extract_trace(image_file_path,
                 from the same structure)
             - generated through picasso render
 
-        drfit_file_path (string):
+        drift_file_path (string):
             - a .txt file containg the drift correction values for each frame
                 of the tiff movie
             - generated as an output of picasso localize, running undrift RCC,
                 or undrift from picks
         
         pixels (int):
-            - the radius of a grid around the ceter pixel to include in the
+            - the radius of a grid around the center pixel to include in the
                 intensity value measurement for each frame
             - ex. pixels = 1 measures a 3x3 grid, and sums all 9 values to get
                 the intensity measurement for each frame
