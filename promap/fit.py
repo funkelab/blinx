@@ -82,6 +82,81 @@ def optimize_params(y, trace,
         print('-'*50)
     return -1*likelihood, p_on, p_off, mu, sigma
 
+def optimize_params_new(y, trace,
+                    p_on_guess=0.1,
+                    p_off_guess=0.1,
+                    mu_guess=50.,
+                    sigma_guess=0.2,
+                    mu_b_guess=200,
+                    mu_lr = 5):
+    '''
+    Use gradient descent to fit kinetic (p_on / off) and emission
+    (mu / sigma) parameters to an intensity trace, for a given value of y
+
+    Args:
+        y (int):
+            - The maximum number of elements that can be on.
+
+        trace (jnp array):
+            - ordered array of intensity observations
+            - shape (number_observations, )
+
+        p_on_guess / p_off_guess (float):
+            - value between 0 and 1 not inclusive
+
+        mu_guess (float):
+            - the mean intensity on a single fluorophore when on
+
+        sigma_guess (float):
+            - the variance of the intensity of a single fluorophore
+
+    Returns:
+        The maximum log-likelihood that the trace arrose from y elements,
+        as well as the optimum values of p_on, p_off, mu, and sigma
+    '''
+    
+    likelihood_grad_func = _create_likelihood_grad_func(y, mu_b_guess)
+                                           # creates a new loss function
+                                           # for the given y value
+
+    params = (p_on_guess, p_off_guess, mu_guess, sigma_guess)
+    optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
+    opt_state = optimizer.init(params)
+    
+    mu_optimizer = optax.sgd(learning_rate=mu_lr)
+    mu_opt_state = mu_optimizer.init(params[2])
+    
+    old_likelihood = 1
+    diff = 10
+    p_on = p_on_guess
+    p_off = p_off_guess
+    mu = mu_guess
+    sigma = sigma_guess
+    #update_scale = (jnp.asarray([1, 1, 1000, 1]))
+    #mus = jnp.asarray([mu_guess])
+
+    while diff > 1e-4:
+
+        likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
+                                                 trace, mu_b_guess)
+        
+        updates, opt_state = optimizer.update(grads, opt_state)
+        new_update = (updates[0], updates[1], updates[2], updates[3])
+        
+        mu_update, mu_opt_state = mu_optimizer.update(grads[2], mu_opt_state)
+        
+        p_on, p_off, mu, sigma = optax.apply_updates((p_on, p_off, mu,
+                                                      sigma), new_update)
+        mu = optax.apply_updates((mu), mu_update)
+    
+        diff = jnp.abs(likelihood - old_likelihood)
+        old_likelihood = likelihood
+
+        print(f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}, {mu:.4f}, {sigma:.4f}')
+        print('-'*50)
+        
+    return -1*likelihood, p_on, p_off, mu, sigma
+
 def _create_likelihood_grad_func(y, mu_b_guess=200):
     '''
     Helper function that creates a loss function used to fit parameters

@@ -11,7 +11,7 @@ config.update("jax_enable_x64", True)
 if __name__ == '__main__':
 
     # generate a test trace
-    y_test = 25
+    y_test = 50
     seed = 100
     e_params = EmissionParams(mu_i=50, sigma_i=0.03, mu_b=200, sigma_b=0.15)
     t_model_t = TraceModel(e_params, p_on=0.05, p_off=0.05)
@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
 
     
-    y = 25
+    y = 50
     start = time.time()
     likelihood, p_on, p_off, mu, sigma = fit.optimize_params(y, x_trace)
 

@@ -9,6 +9,7 @@ if __name__ == '__main__':
     trace = extract.extract_trace(image_file_path,
                                   pick_file_path,
                                   drift_file_path,
-                                  spot_num=9)
+                                  spot_num=9,
+                                  pixels=2)
 
     plt.plot(trace[1000:2000])

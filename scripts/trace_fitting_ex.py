@@ -25,7 +25,7 @@ if __name__ == '__main__':
     ys = [5]
     start = time.time()
     for y in ys:
-        likelihood, p_on, p_off, mu, sigma = fit.optimize_params(y, x_trace, mu_b_guess=300)
+        likelihood, p_on, p_off, mu, sigma = fit.optimize_params_new(y, x_trace, mu_b_guess=300)
 
         print('- '*20)
         print(f'y = {y}')
