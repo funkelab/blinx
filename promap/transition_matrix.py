@@ -62,6 +62,18 @@ def create_transition_matrix(y,
     
     return correlate(t_on_matrix[:y + 1, max_y - y:], t_off_matrix[:y + 1])
     
+def p_initial(y, trans_m):
+    c_state = jnp.ones(y+1) / (y+1)
+    
+    def lax_unit(initial_prob, xs):
+        state = jnp.matmul(initial_prob, trans_m)
+        return state, state
+    
+    xs = jnp.arange(100)
+    final, result = jax.lax.scan(lax_unit, c_state, xs)
+    
+    return final
+
 def _create_comb_matrix(y, slanted=False):
     '''Creates a matrix of n-choose-k values.
 

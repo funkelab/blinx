@@ -73,7 +73,7 @@ class TraceModel:
             set(transition_m[row_indicies, max_locs] - 2 * rounding_error)
 
         # quick estiamte of p_initial values, WRONG!! (but works well enough)
-        p_initial = jnp.log(transition_m[0, :])
+        p_initial = jnp.log(transition_matrix.p_initial(y, transition_m))
         # jax.random.catigorical takes log probs
 
         # generate a list of states, use scan b/c state t depends on state t-1
@@ -186,3 +186,4 @@ class TraceModel:
         prob_time_t = temp * scale_factor
 
         return prob_time_t, scale_factor
+    

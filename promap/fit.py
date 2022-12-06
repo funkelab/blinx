@@ -111,7 +111,7 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
                                                                    comb_matrix,
                                                                    comb_matrix_slanted)
         transition_mat = c_transition_matrix_2(p_on, p_off)
-        p_initial = transition_mat[0, :]
+        p_initial = transition_matrix.p_initial(y, transition_mat)
         likelihood = t_model.get_likelihood(probs, transition_mat,
                                               p_initial)
         return -1 * likelihood  # need to flip to positive value for grad descent
