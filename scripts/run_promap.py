@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     plt.plot(trace[1000:2000])
     
-    y = 6
+    y = 4
     
     likelihood, p_on, p_off, mu, sigma = fit.optimize_params(y, trace,
                                                              mu_guess = 2000.,
