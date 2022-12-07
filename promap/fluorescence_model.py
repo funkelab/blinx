@@ -36,8 +36,8 @@ class FluorescenceModel:
 
         distribution (``str``):
             The type of distribution to use to model the intensity values of
-            one bound fluorophore. Possible choices: 'lognormal' (default) and
-            'poisson'.
+            one bound fluorophore. Possible choices: 'lognormal' (default),
+            'normal', and 'poisson'.
     '''
 
     def __init__(self,
@@ -80,6 +80,8 @@ class FluorescenceModel:
 
         if self.distribution == 'lognormal':
             return self._sample_x_z_lognorm(z, key)
+        elif self.distribution == 'normal':
+            raise RuntimeError("Not implemented yet")
         elif self.distribution == 'poisson':
             return self._sample_x_z_poisson(z, key)
         else:
@@ -143,6 +145,26 @@ class FluorescenceModel:
 
         return prob
 
+    def _p_x_given_z_normal(self, x, z):
+
+        mean = self.mu_i * z + self.mu_b
+
+        x_left = (x // self.bin_width) * self.bin_width
+        x_right = x_left + self.bin_width
+
+        prob_1 = jax.scipy.stats.norm.cdf(
+            x_left,
+            loc=mean,
+            scale=self.sigma_i)
+        prob_2 = jax.scipy.stats.norm.cdf(
+            x_right,
+            loc=mean,
+            scale=self.sigma_i)
+
+        prob = jnp.abs(prob_1 - prob_2)
+
+        return prob
+
     def _p_x_given_z_lognorm(self, x, z):
 
         mean = jnp.log(self.mu_i * z + self.mu_b)
@@ -170,6 +192,8 @@ class FluorescenceModel:
 
         if self.distribution == 'lognormal':
             p_x_given_z_dist = self._p_x_given_z_lognorm
+        elif self.distribution == 'normal':
+            p_x_given_z_dist = self._p_x_given_z_normal
         elif self.distribution == 'poisson':
             p_x_given_z_dist = self._p_x_given_z_poisson
         else:
