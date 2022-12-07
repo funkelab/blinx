@@ -58,7 +58,7 @@ def optimize_params(y, trace,
     mu = mu_guess
     sigma = sigma_guess
 
-    while diff > 1e-3:
+    while diff > 1e-4:
 
         likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
                                                  trace, mu_b_guess)
