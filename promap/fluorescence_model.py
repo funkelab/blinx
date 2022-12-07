@@ -60,7 +60,7 @@ class FluorescenceModel:
         self.sigma_b2 = emission_params.sigma_b**2
         self.label_eff = emission_params.label_eff
 
-    def sample_x_z_poisson_jax(self, z, seed):
+    def sample_x_z_poisson(self, z, seed):
         ''' Samples a Poisson random variable '''
         lam = self.mu_i * z + self.mu_b
         key = random.PRNGKey(seed)
@@ -69,7 +69,7 @@ class FluorescenceModel:
 
         return value
 
-    def sample_x_z_lognorm_jax(self, z, key, shape=(1, 1)):
+    def sample_x_z_lognorm(self, z, key, shape=(1, 1)):
 
         mean = jnp.log(self.mu_i * z + self.mu_b)
 
