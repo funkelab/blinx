@@ -24,6 +24,16 @@ class FluorescenceModel:
         label_eff:
             the labeling efficiency of y
 
+        num_bins (``int``):
+
+            The number of bins to discretize the trace intensities to.
+
+        p_outlier (``float``):
+
+            The probability to observe an outlier intensity value, i.e., a
+            value that was not drawn from the ``distribution``, like
+            salt-and-pepper noise.
+
         distribution (``str``):
             The type of distribution to use to model the intensity values of
             one bound fluorophore. Possible choices: 'lognormal' (default) and
@@ -36,6 +46,8 @@ class FluorescenceModel:
                  mu_b=1,
                  sigma_b=0.1,
                  label_eff=1,
+                 num_bins=1024,
+                 p_outlier=1e-3,
                  distribution='lognormal'):
 
         self.mu_i = mu_i
@@ -46,6 +58,9 @@ class FluorescenceModel:
         self.sigma_b2 = sigma_b**2
         self.label_eff = label_eff
         self.distribution = distribution
+
+        self.num_bins = num_bins
+        self.p_outlier = p_outlier
 
     def sample_x_z(self, z, key):
         """Draw sample intensity values given a number of bound fluorophores.
@@ -79,9 +94,12 @@ class FluorescenceModel:
         Args:
 
             x (array of type ``float``):
-                The observed intensity values.
+
+                The observed intensity values, normalized to be in the interval
+                [0, 1].
 
             max_z (``int``):
+
                 The maximum number of binding sites.
 
         Returns:
@@ -93,15 +111,9 @@ class FluorescenceModel:
         zs = jnp.arange(0, max_z + 1)
         x = jnp.expand_dims(x, 0)
 
-        if self.distribution == 'lognormal':
-            result = jax.vmap(self._p_x_given_z_lognorm,
-                              in_axes=(1, None))(x, zs)
-        elif self.distribution == 'poisson':
-            result = jax.vmap(self._p_x_given_z_poisson,
-                              in_axes=(1, None))(x, zs)
-        else:
-            raise RuntimeError(
-                f"Unknown distribution type {self.distribution}")
+        result = jax.vmap(
+            self._p_x_given_z,
+            in_axes=(1, None))(x, zs)
 
         return result.T
 
@@ -132,14 +144,41 @@ class FluorescenceModel:
     def _p_x_given_z_lognorm(self, x, z):
 
         mean = jnp.log(self.mu_i * z + self.mu_b)
-        value_1 = jnp.log(x)
-        value_2 = value_1 + 1/256
 
-        prob_1 = jax.scipy.stats.norm.cdf(value_1, loc=mean,
-                                          scale=self.sigma_i)
-        prob_2 = jax.scipy.stats.norm.cdf(value_2, loc=mean,
-                                          scale=self.sigma_i)
+        x_left = jnp.floor(x * self.num_bins) / self.num_bins
+        x_right = x_left + 1.0 / self.num_bins
+
+        log_x_left = jnp.log(x_left)
+        log_x_right = jnp.log(x_right)
+
+        prob_1 = jax.scipy.stats.norm.cdf(
+            log_x_left,
+            loc=mean,
+            scale=self.sigma_i)
+        prob_2 = jax.scipy.stats.norm.cdf(
+            log_x_right,
+            loc=mean,
+            scale=self.sigma_i)
 
         prob = jnp.abs(prob_1 - prob_2)
 
         return prob
+
+    def _p_x_given_z(self, x, z):
+
+        if self.distribution == 'lognormal':
+            p_x_given_z_dist = self._p_x_given_z_lognorm
+        elif self.distribution == 'poisson':
+            p_x_given_z_dist = self._p_x_given_z_poisson
+        else:
+            raise RuntimeError(
+                f"Unknown distribution type {self.distribution}")
+
+        return (
+            self.p_outlier * self._p_x_given_z_uniform() +
+            (1 - self.p_outlier) * p_x_given_z_dist(x, z)
+        )
+
+    def _p_x_given_z_uniform(self):
+
+        return 1.0/self.num_bins
