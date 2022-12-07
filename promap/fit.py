@@ -39,13 +39,6 @@ def optimize_params(y, trace,
         as well as the optimum values of p_on, p_off, mu, and sigma
     '''
 
-    # TODO: stop it from letting parameters go negative
-    # TODO: add multiple starting points
-    # TODO: change learning rate for different parameters
-    #       - currently way to low for mu
-    #       - add a seperate optimizer?
-    # when underestimating count, training loop reaches a point where only mu is changing
-
     likelihood_grad_func = _create_likelihood_grad_func(y, mu_b_guess)
                                            # creates a new loss function
                                            # for the given y value
