@@ -30,12 +30,12 @@ class TraceModel:
             length of trace
     '''
 
-    def __init__(self, emission_params, p_on=None, p_off=None):
+    def __init__(self, fluorescence_model, p_on=None, p_off=None):
 
         # currently working with p_on/off, might need to switch to k_on/off
+        self.fluorescence_model = fluorescence_model
         self.p_on = p_on
         self.p_off = p_off
-        self.fluorescence_model = FluorescenceModel(emission_params)
 
     def generate_trace(self, y, seed, num_frames, distribution='lognormal'):
         ''' generate a synthetic intensity trace
@@ -90,9 +90,9 @@ class TraceModel:
         a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
 
         if distribution == 'lognormal':
-            sample_distribution = self.fluorescence_model.sample_x_z_lognorm_jax
+            sample_distribution = self.fluorescence_model.sample_x_z_lognorm
         if distribution == 'poisson':
-            sample_distribution = self.fluorescence_model.sample_x_z_poisson_jax
+            sample_distribution = self.fluorescence_model.sample_x_z_poisson
 
         key = random.PRNGKey(seed)
         subkey = random.split(key)

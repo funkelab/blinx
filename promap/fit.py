@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import jax
 from promap.trace_model import TraceModel
-from promap.fluorescence_model import EmissionParams
+from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
 import optax
 
@@ -95,9 +95,12 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
     '''
 
     def likelihood_func(p_on, p_off, mu, sigma, trace, mu_b_guess=200):
-        e_params = EmissionParams(mu_i=mu, sigma_i=sigma, mu_b=mu_b_guess,
-                                  sigma_b=0.05)
-        t_model = TraceModel(e_params)
+        fluorescence_model = FluorescenceModel(
+            mu_i=mu,
+            sigma_i=sigma,
+            mu_b=mu_b_guess,
+            sigma_b=0.05)
+        t_model = TraceModel(fluorescence_model)
 
         probs = t_model.fluorescence_model.vmap_p_x_given_z_lognorm(trace,
                                                                     y)

@@ -3,10 +3,10 @@ import jax.numpy as jnp
 from jax import random
 
 
-class EmissionParams:
+class FluorescenceModel:
     '''
-    - Stores all parameters needed for the fluorescence model
-    - Used to calcualte emission probabilities of HMM
+    - Deals with the intensity measurements
+    - The emmission probabilities of the hidden markov model
 
     Args:
         mu_i:
@@ -34,31 +34,11 @@ class EmissionParams:
 
         self.mu_i = mu_i
         self.sigma_i = sigma_i
+        self.sigma_i2 = sigma_i**2
         self.mu_b = mu_b
         self.sigma_b = sigma_b
+        self.sigma_b2 = sigma_b**2
         self.label_eff = label_eff
-
-
-class FluorescenceModel:
-    '''
-    - Deals with the intensity measurements
-    - The emmission probabilities of the hidden markov model
-
-    Args:
-        Emission_Params:
-            Instance of class EmissionParams
-
-    '''
-
-    def __init__(self, emission_params):
-
-        self.mu_i = emission_params.mu_i
-        self.sigma_i = emission_params.sigma_i
-        self.sigma_i2 = emission_params.sigma_i**2
-        self.mu_b = emission_params.mu_b
-        self.sigma_b = emission_params.sigma_b
-        self.sigma_b2 = emission_params.sigma_b**2
-        self.label_eff = emission_params.label_eff
 
     def sample_x_z_poisson(self, z, seed):
         ''' Samples a Poisson random variable '''
