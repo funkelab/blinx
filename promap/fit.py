@@ -10,7 +10,8 @@ def optimize_params(y, trace,
                     p_off_guess=0.1,
                     mu_guess=50.,
                     sigma_guess=0.2,
-                    mu_b_guess=200):
+                    mu_b_guess=200,
+                    mu_lr = 5):
 
     '''
     Use gradient descent to fit kinetic (p_on / off) and emission
@@ -54,6 +55,8 @@ def optimize_params(y, trace,
     opt_state = optimizer.init(params)
     optax.keep_params_nonnegative() # works almost too well
     
+    mu_optimizer = optax.sgd(learning_rate=mu_lr)
+    mu_opt_state = mu_optimizer.init(params[2])
     
 
     old_likelihood = 1
@@ -71,8 +74,12 @@ def optimize_params(y, trace,
         
         updates, opt_state = optimizer.update(grads, opt_state)
         #print(updates)
+
+        mu_update, mu_opt_state = mu_optimizer.update(grads[2], mu_opt_state)
+
         p_on, p_off, mu, sigma = optax.apply_updates((p_on, p_off, mu,
                                                       sigma), updates)
+        mu = optax.apply_updates((mu), mu_update)
 
         diff = jnp.abs(likelihood - old_likelihood)
         old_likelihood = likelihood
