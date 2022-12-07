@@ -95,8 +95,7 @@ class FluorescenceModel:
 
             x (array of type ``float``):
 
-                The observed intensity values, normalized to be in the interval
-                [0, 1].
+                The observed intensity values.
 
             max_z (``int``):
 
@@ -108,6 +107,9 @@ class FluorescenceModel:
             elements in ``x``, containing the emission probabilites for ``z =
             0, ..., max_z``.
         """
+
+        self.bin_width = x.max() / self.num_bins
+
         zs = jnp.arange(0, max_z + 1)
         x = jnp.expand_dims(x, 0)
 
@@ -145,8 +147,8 @@ class FluorescenceModel:
 
         mean = jnp.log(self.mu_i * z + self.mu_b)
 
-        x_left = jnp.floor(x * self.num_bins) / self.num_bins
-        x_right = x_left + 1.0 / self.num_bins
+        x_left = (x // self.bin_width) * self.bin_width
+        x_right = x_left + self.bin_width
 
         log_x_left = jnp.log(x_left)
         log_x_right = jnp.log(x_right)
