@@ -28,6 +28,10 @@ class TraceModel:
         num_frames:
             the number of frames in the trace, multiply by step time to get
             length of trace
+
+        distribution (string):
+            - either 'lognormal' or 'poisson'
+            - choice of distribution to sample intensities from
     '''
 
     def __init__(self, fluorescence_model, p_on=None, p_off=None):
@@ -37,7 +41,7 @@ class TraceModel:
         self.p_on = p_on
         self.p_off = p_off
 
-    def generate_trace(self, y, seed, num_frames, distribution='lognormal'):
+    def generate_trace(self, y, seed, num_frames):
         ''' generate a synthetic intensity trace
 
         Args:
@@ -46,10 +50,6 @@ class TraceModel:
 
             seed (int):
                 - random seed for the jax psudo rendom number generator
-
-            distribution (string):
-                - either 'lognormal' or 'poisson'
-                - choice of distribution to sample intensities from
 
         Returns:
             x_trace (array):
@@ -89,15 +89,11 @@ class TraceModel:
         subkeys = random.split(key, num=num_frames+100)
         a, states = jax.lax.scan(scan2, init=initial_state, xs=subkeys)
 
-        if distribution == 'lognormal':
-            sample_distribution = self.fluorescence_model.sample_x_z_lognorm
-        if distribution == 'poisson':
-            sample_distribution = self.fluorescence_model.sample_x_z_poisson
-
         key = random.PRNGKey(seed)
         subkey = random.split(key)
-        x_trace = sample_distribution(jnp.asarray(states), subkey[0],
-                                      shape=states.shape)
+        x_trace = self.fluorescence_model.sample_x_z(
+            jnp.asarray(states),
+            subkey[0])
 
         return x_trace[100:, 0], states[100:]
 

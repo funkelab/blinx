@@ -102,8 +102,7 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
             sigma_b=0.05)
         t_model = TraceModel(fluorescence_model)
 
-        probs = t_model.fluorescence_model.vmap_p_x_given_z_lognorm(trace,
-                                                                    y)
+        probs = t_model.fluorescence_model.p_x_given_zs(trace, y)
 
         comb_matrix = transition_matrix._create_comb_matrix(y)
         comb_matrix_slanted = transition_matrix._create_comb_matrix(
