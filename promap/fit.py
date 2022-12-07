@@ -62,7 +62,6 @@ def optimize_params(y, trace,
 
         likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
                                                  trace, mu_b_guess)
-        print(f'{grads[0]:.2f}, {grads[1]:.2f}, {grads[2]:.2f}, {grads[3]:.2f}')
         
         updates, opt_state = optimizer.update(grads, opt_state)
         #print(updates)
