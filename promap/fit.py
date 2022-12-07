@@ -46,7 +46,6 @@ def optimize_params(y, trace,
     params = (p_on_guess, p_off_guess, mu_guess, sigma_guess)
     optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
     opt_state = optimizer.init(params)
-    optax.keep_params_nonnegative() # works almost too well
     
     mu_optimizer = optax.sgd(learning_rate=mu_lr)
     mu_opt_state = mu_optimizer.init(params[2])
