@@ -5,14 +5,14 @@ from promap.fluorescence_model import EmissionParams
 from promap import transition_matrix
 import optax
 
+
 def optimize_params(y, trace,
                     p_on_guess=0.1,
                     p_off_guess=0.1,
                     mu_guess=50.,
                     sigma_guess=0.2,
                     mu_b_guess=200,
-                    mu_lr = 5):
-
+                    mu_lr=5):
     '''
     Use gradient descent to fit kinetic (p_on / off) and emission
     (mu / sigma) parameters to an intensity trace, for a given value of y
@@ -39,17 +39,15 @@ def optimize_params(y, trace,
         as well as the optimum values of p_on, p_off, mu, and sigma
     '''
 
+    # create a new loss function for the given y value
     likelihood_grad_func = _create_likelihood_grad_func(y, mu_b_guess)
-                                           # creates a new loss function
-                                           # for the given y value
 
     params = (p_on_guess, p_off_guess, mu_guess, sigma_guess)
     optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
     opt_state = optimizer.init(params)
-    
+
     mu_optimizer = optax.sgd(learning_rate=mu_lr)
     mu_opt_state = mu_optimizer.init(params[2])
-    
 
     old_likelihood = 1
     diff = 10
@@ -62,9 +60,8 @@ def optimize_params(y, trace,
 
         likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
                                                  trace, mu_b_guess)
-        
+
         updates, opt_state = optimizer.update(grads, opt_state)
-        #print(updates)
 
         mu_update, mu_opt_state = mu_optimizer.update(grads[2], mu_opt_state)
 
@@ -74,11 +71,14 @@ def optimize_params(y, trace,
 
         diff = jnp.abs(likelihood - old_likelihood)
         old_likelihood = likelihood
-        
 
-        print(f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}, {mu:.4f}, {sigma:.4f}')
+        print(
+            f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}'
+            f', {mu:.4f}, {sigma:.4f}')
         print('-'*50)
+
     return -1*likelihood, p_on, p_off, mu, sigma
+
 
 def _create_likelihood_grad_func(y, mu_b_guess=200):
     '''
@@ -103,17 +103,29 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
                                                                     y)
 
         comb_matrix = transition_matrix._create_comb_matrix(y)
-        comb_matrix_slanted = transition_matrix._create_comb_matrix(y, slanted=True)
+        comb_matrix_slanted = transition_matrix._create_comb_matrix(
+            y,
+            slanted=True)
 
-        c_transition_matrix_2 = lambda p_on, p_off: transition_matrix.create_transition_matrix(y, p_on, p_off,
-                                                                   comb_matrix,
-                                                                   comb_matrix_slanted)
+        def c_transition_matrix_2(p_on, p_off):
+            return transition_matrix.create_transition_matrix(
+                y, p_on, p_off,
+                comb_matrix,
+                comb_matrix_slanted)
+
         transition_mat = c_transition_matrix_2(p_on, p_off)
         p_initial = transition_matrix.p_initial(y, transition_mat)
-        likelihood = t_model.get_likelihood(probs, transition_mat,
-                                              p_initial)
-        return -1 * likelihood  # need to flip to positive value for grad descent
+        likelihood = t_model.get_likelihood(
+            probs,
+            transition_mat,
+            p_initial)
 
-    unit_grad_jit = jax.jit(jax.value_and_grad(likelihood_func, argnums=(0, 1, 2, 3)))
+        # need to flip to positive value for grad descent
+        return -1 * likelihood
+
+    unit_grad_jit = jax.jit(
+        jax.value_and_grad(
+            likelihood_func,
+            argnums=(0, 1, 2, 3)))
 
     return unit_grad_jit
