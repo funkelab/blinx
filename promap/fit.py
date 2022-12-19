@@ -80,6 +80,12 @@ def optimize_params(y, trace,
     return -1*likelihood, p_on, p_off, mu, sigma
 
 def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
+    ''' 
+    Returns the likelihood of a trace given:
+        a count (y),
+        kinetic parameters (p_on & p_off), and
+        emission parameters (mu & sigma)
+    '''
     fluorescence_model = FluorescenceModel(
         mu_i=mu,
         sigma_i=sigma,
@@ -162,9 +168,14 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
 
     return unit_grad_jit
 
-def _initial_guesses(mu_min, y, trace, mu_b_guess=200, sigma=0.05):
+def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
+    ''' 
+    Provides a rough estimate of parameters (p_on, p_off, and mu)
+    Grid searches over defined parameter space and returns the minimum
+    log likelihood parameters
+    '''
     mus = jnp.linspace(mu_min, jnp.max(trace), 100)
-    p_s = jnp.linspace(1e-4, 0.1, 20)
+    p_s = jnp.linspace(1e-4, p_max, 20)
     
     bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(y=y, p_on=p_on, 
         p_off=p_off, mu=mu, sigma=sigma, trace=trace, mu_b_guess = mu_b_guess)
