@@ -65,7 +65,7 @@ def optimize_params(y, trace,
 
         mu_update, mu_opt_state = mu_optimizer.update(grads[2], mu_opt_state)
 
-        p_on, p_off, mu, sigma = optax.apply_updates((p_on, p_off, mu,
+        p_on, p_off, _, sigma = optax.apply_updates((p_on, p_off, mu,
                                                       sigma), updates)
         mu = optax.apply_updates((mu), mu_update)
 
