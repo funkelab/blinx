@@ -79,6 +79,36 @@ def optimize_params(y, trace,
 
     return -1*likelihood, p_on, p_off, mu, sigma
 
+def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
+    fluorescence_model = FluorescenceModel(
+        mu_i=mu,
+        sigma_i=sigma,
+        mu_b=mu_b_guess,
+        sigma_b=0.05)
+    t_model = TraceModel(fluorescence_model)
+
+    probs = t_model.fluorescence_model.p_x_given_zs(trace, y)
+
+    comb_matrix = transition_matrix._create_comb_matrix(y)
+    comb_matrix_slanted = transition_matrix._create_comb_matrix(
+        y,
+        slanted=True)
+
+    def c_transition_matrix_2(p_on, p_off):
+        return transition_matrix.create_transition_matrix(
+            y, p_on, p_off,
+            comb_matrix,
+            comb_matrix_slanted)
+
+    transition_mat = c_transition_matrix_2(p_on, p_off)
+    p_initial = transition_matrix.p_initial(y, transition_mat)
+    likelihood = t_model.get_likelihood(
+        probs,
+        transition_mat,
+        p_initial)
+
+    # need to flip to positive value for grad descent
+    return -1 * likelihood
 
 def _create_likelihood_grad_func(y, mu_b_guess=200):
     '''
