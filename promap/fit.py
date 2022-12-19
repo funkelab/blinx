@@ -161,3 +161,19 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
             argnums=(0, 1, 2, 3)))
 
     return unit_grad_jit
+
+def _initial_guesses(mu_min, y, trace, mu_b_guess=200, sigma=0.05):
+    mus = jnp.linspace(mu_min, jnp.max(trace), 100)
+    p_s = jnp.linspace(1e-4, 0.1, 20)
+    
+    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(y=y, p_on=p_on, 
+        p_off=p_off, mu=mu, sigma=sigma, trace=trace, mu_b_guess = mu_b_guess)
+    
+    result = jax.vmap(jax.vmap(jax.vmap(bound_likelihood,
+        in_axes=(0,None,None)),
+        in_axes=(None,0,None)),
+        in_axes=(None,None,0)) (mus, p_s, p_s)
+    
+    ig_index = jnp.where(result == jnp.min(result))
+   
+    return p_s[ig_index[0]], p_s[ig_index[1]], mus[ig_index[2]]
