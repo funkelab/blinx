@@ -3,16 +3,13 @@ import jax
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
-from promap.constants import P_ON, P_OFF, MU
+from promap.constants import P_ON, P_OFF, MU, SIGMA
 import optax
 
 
 def optimize_params(y,
                     trace,
-                    p_on_guess=0.1,
-                    p_off_guess=0.1,
-                    mu_guess=50.,
-                    sigma_guess=0.2,
+                    guess_params=[0.1, 0.1, 50., 0.2],
                     mu_b_guess=200,
                     mu_lr=5):
     '''
@@ -44,7 +41,12 @@ def optimize_params(y,
     # create a new loss function for the given y value
     likelihood_grad_func = _create_likelihood_grad_func(y, mu_b_guess)
 
-    params = (p_on_guess, p_off_guess, mu_guess, sigma_guess)
+    p_on = guess_params[P_ON]
+    p_off = guess_params[P_OFF]
+    mu = guess_params[MU]
+    sigma = guess_params[SIGMA]
+
+    params = (p_on, p_off, mu, sigma)
     optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
     opt_state = optimizer.init(params)
 
@@ -53,10 +55,7 @@ def optimize_params(y,
 
     old_likelihood = 1
     diff = 10
-    p_on = p_on_guess
-    p_off = p_off_guess
-    mu = mu_guess
-    sigma = sigma_guess
+    
 
     while diff > 1e-4:
 
