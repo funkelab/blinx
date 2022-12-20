@@ -3,10 +3,12 @@ import jax
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
+from promap.constants import P_ON, P_OFF, MU
 import optax
 
 
-def optimize_params(y, trace,
+def optimize_params(y,
+                    trace,
                     p_on_guess=0.1,
                     p_off_guess=0.1,
                     mu_guess=50.,
@@ -65,8 +67,9 @@ def optimize_params(y, trace,
 
         mu_update, mu_opt_state = mu_optimizer.update(grads[2], mu_opt_state)
 
-        p_on, p_off, _, sigma = optax.apply_updates((p_on, p_off, mu,
-                                                      sigma), updates)
+        p_on, p_off, _, sigma = optax.apply_updates((p_on, p_off, mu, sigma),
+            updates)
+
         mu = optax.apply_updates((mu), mu_update)
 
         diff = jnp.abs(likelihood - old_likelihood)
@@ -79,8 +82,9 @@ def optimize_params(y, trace,
 
     return -1*likelihood, p_on, p_off, mu, sigma
 
+
 def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
-    ''' 
+    '''
     Returns the likelihood of a trace given:
         a count (y),
         kinetic parameters (p_on & p_off), and
@@ -115,6 +119,7 @@ def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
 
     # need to flip to positive value for grad descent
     return -1 * likelihood
+
 
 def _create_likelihood_grad_func(y, mu_b_guess=200):
     '''
@@ -168,23 +173,24 @@ def _create_likelihood_grad_func(y, mu_b_guess=200):
 
     return unit_grad_jit
 
+
 def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
-    ''' 
+    '''
     Provides a rough estimate of parameters (p_on, p_off, and mu)
     Grid searches over defined parameter space and returns the minimum
     log likelihood parameters
     '''
     mus = jnp.linspace(mu_min, jnp.max(trace), 100)
     p_s = jnp.linspace(1e-4, p_max, 20)
-    
-    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(y=y, p_on=p_on, 
-        p_off=p_off, mu=mu, sigma=sigma, trace=trace, mu_b_guess = mu_b_guess)
-    
+
+    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(y, p_on,
+        p_off, mu, sigma, trace, mu_b_guess)
+
     result = jax.vmap(jax.vmap(jax.vmap(bound_likelihood,
-        in_axes=(0,None,None)),
-        in_axes=(None,0,None)),
-        in_axes=(None,None,0)) (mus, p_s, p_s)
-    
+        in_axes=(0, None, None)),
+        in_axes=(None, 0, None)),
+        in_axes=(None, None, 0))(mus, p_s, p_s)
+
     ig_index = jnp.where(result == jnp.min(result))
-   
-    return p_s[ig_index[0]], p_s[ig_index[1]], mus[ig_index[2]]
+
+    return p_s[ig_index[P_ON]], p_s[ig_index[P_OFF]], mus[ig_index[MU]]
