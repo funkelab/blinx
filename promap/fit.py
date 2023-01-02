@@ -39,8 +39,13 @@ def optimize_params(y,
         as well as the optimum values of p_on, p_off, mu, and sigma
     '''
 
-    # create a new loss function for the given y value
-    likelihood_grad_func = _create_likelihood_grad_func(y, mu_b_guess)
+    # create a new loss function for the given y value and trace
+    bound_likelihood = lambda p_on, p_off, mu, sigma: _likelihood_func(y,
+                                                p_on, p_off, mu, sigma, trace,
+                                                mu_b_guess=mu_b_guess)
+    
+    likelihood_grad_func = jax.jit(
+        jax.value_and_grad(bound_likelihood, argnums=(0, 1, 2, 3)))
 
     p_on = guess_params[P_ON]
     p_off = guess_params[P_OFF]
@@ -59,8 +64,8 @@ def optimize_params(y,
 
     while diff > 1e-4:
 
-        likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma,
-                                                 trace, mu_b_guess)
+        likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma)
+                                                 #trace, mu_b_guess)
 
         updates, opt_state = optimizer.update(grads, opt_state)
 
@@ -118,59 +123,6 @@ def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
 
     # need to flip to positive value for grad descent
     return -1 * likelihood
-
-
-def _create_likelihood_grad_func(y, mu_b_guess=200):
-    '''
-    Helper function that creates a loss function used to fit parameters
-    p_on, p_off, mu, and simga
-
-    Args:
-        y (int):
-            - The maximum number of elements that can be on
-
-    Returns:
-        a jited function that returns the likelihood, which acts as a loss,
-        when given values for p_on, p_off, mu, and sigma
-    '''
-
-    def likelihood_func(p_on, p_off, mu, sigma, trace, mu_b_guess=200):
-        fluorescence_model = FluorescenceModel(
-            mu_i=mu,
-            sigma_i=sigma,
-            mu_b=mu_b_guess,
-            sigma_b=0.05)
-        t_model = TraceModel(fluorescence_model)
-
-        probs = t_model.fluorescence_model.p_x_given_zs(trace, y)
-
-        comb_matrix = transition_matrix._create_comb_matrix(y)
-        comb_matrix_slanted = transition_matrix._create_comb_matrix(
-            y,
-            slanted=True)
-
-        def c_transition_matrix_2(p_on, p_off):
-            return transition_matrix.create_transition_matrix(
-                y, p_on, p_off,
-                comb_matrix,
-                comb_matrix_slanted)
-
-        transition_mat = c_transition_matrix_2(p_on, p_off)
-        p_initial = transition_matrix.p_initial(y, transition_mat)
-        likelihood = t_model.get_likelihood(
-            probs,
-            transition_mat,
-            p_initial)
-
-        # need to flip to positive value for grad descent
-        return -1 * likelihood
-
-    unit_grad_jit = jax.jit(
-        jax.value_and_grad(
-            likelihood_func,
-            argnums=(0, 1, 2, 3)))
-
-    return unit_grad_jit
 
 
 def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
