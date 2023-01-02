@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 import jax
+from jax import lax
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
@@ -55,7 +56,6 @@ def optimize_params(y,
 
     old_likelihood = 1
     diff = 10
-    
 
     while diff > 1e-4:
 
@@ -193,3 +193,29 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
     ig_index = jnp.where(result == jnp.min(result))
 
     return p_s[ig_index[P_ON]], p_s[ig_index[P_OFF]], mus[ig_index[MU]]
+
+
+def _find_minima_3d(test_vec, window):
+    mu_indecies = jnp.arange(test_vec.shape[2]) \
+        [window:(test_vec.shape[2]-window)]
+    p_off_indecies = jnp.arange(test_vec.shape[0]) \
+        [window:(test_vec.shape[0]-window)]
+    p_on_indecies = jnp.arange(test_vec.shape[0]) \
+        [window:(test_vec.shape[0]-window)]
+
+    def scan_func(vector, p_on_index, p_off_index, mu_index):
+        vector_slice = lax.dynamic_slice(vector,
+             (p_off_index-window, p_on_index, mu_index-window),
+             (2*window, 2*window, 2*window))
+        slice_min = jnp.min(vector_slice)
+        return slice_min
+
+    a = jax.vmap(jax.vmap(jax.vmap(scan_func,
+                 in_axes=(None, None, None, 0)),
+                 in_axes=(None, None, 0, None)),
+                 in_axes=(None, 0, None, None))(test_vec, p_on_indecies,
+                                                p_off_indecies, mu_indecies)
+    a_pad = jnp.pad(a, window)
+    local_minima = jnp.where(a_pad == test_vec)
+
+    return local_minima
