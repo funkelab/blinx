@@ -190,12 +190,22 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
         in_axes=(None, 0, None)),
         in_axes=(None, None, 0))(mus, p_s, p_s)
 
-    ig_index = jnp.where(result == jnp.min(result))
+    #ig_index = jnp.where(result == jnp.min(result))
+    minima_indecies = _find_minima_3d(result, 3)
+    p_on_guess = p_s[minima_indecies[P_ON,:]]
+    p_off_guess = p_s[minima_indecies[P_OFF,:]]
+    mu_guess = mus[minima_indecies[MU,:]]
+    likelihoods = result[tuple(minima_indecies)]
 
-    return p_s[ig_index[P_ON]], p_s[ig_index[P_OFF]], mus[ig_index[MU]]
+    return p_on_guess, p_off_guess, mu_guess, likelihoods
 
 
 def _find_minima_3d(test_vec, window):
+    '''
+    - Finds the local minima of a 3D array
+    - returns the minima indecies as an array of shape 3 x num_minima
+    - for the first axis: 0 = p_on, 1 = p_off, 2 = mu
+    '''
     mu_indecies = jnp.arange(test_vec.shape[2]) \
         [window:(test_vec.shape[2]-window)]
     p_off_indecies = jnp.arange(test_vec.shape[0]) \
@@ -216,6 +226,6 @@ def _find_minima_3d(test_vec, window):
                  in_axes=(None, 0, None, None))(test_vec, p_on_indecies,
                                                 p_off_indecies, mu_indecies)
     a_pad = jnp.pad(a, window)
-    local_minima = jnp.where(a_pad == test_vec)
+    local_minima = jnp.asarray(jnp.where(a_pad == test_vec))
 
     return local_minima
