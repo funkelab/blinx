@@ -190,11 +190,10 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
         in_axes=(None, 0, None)),
         in_axes=(None, None, 0))(mus, p_s, p_s)
 
-    #ig_index = jnp.where(result == jnp.min(result))
     minima_indecies = _find_minima_3d(result, 3)
-    p_on_guess = p_s[minima_indecies[P_ON,:]]
-    p_off_guess = p_s[minima_indecies[P_OFF,:]]
-    mu_guess = mus[minima_indecies[MU,:]]
+    p_on_guess = p_s[minima_indecies[P_ON, :]]
+    p_off_guess = p_s[minima_indecies[P_OFF, :]]
+    mu_guess = mus[minima_indecies[MU, :]]
     likelihoods = result[tuple(minima_indecies)]
 
     return p_on_guess, p_off_guess, mu_guess, likelihoods
@@ -215,16 +214,19 @@ def _find_minima_3d(test_vec, window):
 
     def scan_func(vector, p_on_index, p_off_index, mu_index):
         vector_slice = lax.dynamic_slice(vector,
-             (p_off_index-window, p_on_index, mu_index-window),
+             (p_on_index-window, p_off_index-window, mu_index-window),
              (2*window, 2*window, 2*window))
-        slice_min = jnp.min(vector_slice)
-        return slice_min
+        slice_min = jnp.min(vector_slice).astype('int32')
+        all_same = jnp.all(vector_slice == vector_slice[0])
+        b = jax.lax.cond(all_same, lambda: 0, lambda: slice_min)
+        return b
 
     a = jax.vmap(jax.vmap(jax.vmap(scan_func,
                  in_axes=(None, None, None, 0)),
                  in_axes=(None, None, 0, None)),
                  in_axes=(None, 0, None, None))(test_vec, p_on_indecies,
                                                 p_off_indecies, mu_indecies)
+
     a_pad = jnp.pad(a, window)
     local_minima = jnp.asarray(jnp.where(a_pad == test_vec))
 
