@@ -4,54 +4,90 @@ from jax import lax
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
-from promap.constants import P_ON, P_OFF, MU, SIGMA
+from promap.constants import P_ON, P_OFF, MU
 import optax
 
 
 def optimize_params(y,
-                    trace,
-                    guess_params=[0.1, 0.1, 50., 0.2],
-                    mu_b_guess=200,
-                    mu_lr=5):
+        trace,
+        optimize_meth='joint_2_optimizer',
+        initial_params=None,
+        sigma_guess=0.2,
+        mu_b_guess=5000,
+        mu_lr=5):
     '''
-    Use gradient descent to fit kinetic (p_on / off) and emission
-    (mu / sigma) parameters to an intensity trace, for a given value of y
+    Fit kinetic (p_on / off) and emission (mu / sigma) parameters
+    to an intensity trace for a given value of y
 
     Args:
         y (int):
-            - The maximum number of elements that can be on.
+            - The assumed total number of fluorescent emitters
 
         trace (jnp array):
             - ordered array of intensity observations
             - shape (number_observations, )
 
-        p_on_guess / p_off_guess (float):
-            - value between 0 and 1 not inclusive
+        initial_params (list of arrays) (float) or None:
+            - initial guesses for p_on, p_off, and mu
+            - format list([P_ON], [P_OFF], [MU])
+            - if None, then will automatically find initial guesses
 
-        mu_guess (float):
-            - the mean intensity on a single fluorophore when on
+        optimize_meth (string):
+            - specifies the optimizer to use for gradient descent
 
         sigma_guess (float):
-            - the variance of the intensity of a single fluorophore
+            - initial guess for sigma
+            - is the easiest param to fit so no need for multiple guesses
+
+        mu_b_guess (float / int):
+            - guess for background intensity value
+
+        mu_lr (float):
+            - the learning rate for the mu optimizer
+            - needs to be individually set because of difference in magnitude
+            between mu and other parameters
 
     Returns:
         The maximum log-likelihood that the trace arrose from y elements,
         as well as the optimum values of p_on, p_off, mu, and sigma
     '''
 
-    # create a new loss function for the given y value and trace
+    # Define the loss function for grad descent
     bound_likelihood = lambda p_on, p_off, mu, sigma: _likelihood_func(y,
-                                                p_on, p_off, mu, sigma, trace,
-                                                mu_b_guess=mu_b_guess)
-    
-    likelihood_grad_func = jax.jit(
+        p_on, p_off, mu, sigma, trace,
+        mu_b_guess=mu_b_guess)
+    grad_func = jax.jit(
         jax.value_and_grad(bound_likelihood, argnums=(0, 1, 2, 3)))
 
-    p_on = guess_params[P_ON]
-    p_off = guess_params[P_OFF]
-    mu = guess_params[MU]
-    sigma = guess_params[SIGMA]
+    # find initial guesses for the 4 parameters
+    if initial_params is None:
+        initial_params = _initial_guesses(mu_min=100, p_max=0.2, y=y,
+              trace=trace, mu_b_guess=mu_b_guess)
 
+    if optimize_meth == 'joint_2_optimizer':
+        optimizer = _joint_2_optimizer
+
+    num_local_minima = len(initial_params[P_ON])
+    best_likelihood = None
+    for i in range(num_local_minima):
+        results = optimizer(p_on=initial_params[P_ON][i],
+            p_off=initial_params[P_OFF][i],
+            mu=initial_params[MU][i],
+            sigma=sigma_guess,
+            mu_lr=mu_lr, grad_func=grad_func)
+
+        if best_likelihood is None or results[0] > best_likelihood:
+            best_likelihood = results[0]
+            best_params = results[1:]
+
+    return best_likelihood, best_params
+
+
+def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
+    '''
+    - optimize all 4 parameters jointly
+    - seperate optimizer for mu, but all 4 params fit at the same time
+    '''
     params = (p_on, p_off, mu, sigma)
     optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
     opt_state = optimizer.init(params)
@@ -64,8 +100,7 @@ def optimize_params(y,
 
     while diff > 1e-4:
 
-        likelihood, grads = likelihood_grad_func(p_on, p_off, mu, sigma)
-                                                 #trace, mu_b_guess)
+        likelihood, grads = grad_func(p_on, p_off, mu, sigma)
 
         updates, opt_state = optimizer.update(grads, opt_state)
 
