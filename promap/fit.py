@@ -62,7 +62,7 @@ def optimize_params(y,
     # find initial guesses for the 4 parameters
     if initial_params is None:
         initial_params = _initial_guesses(mu_min=100, p_max=0.2, y=y,
-              trace=trace, mu_b_guess=mu_b_guess)
+              trace=trace, mu_b_guess=mu_b_guess, sigma=sigma_guess)
 
     if optimize_meth == 'joint_2_optimizer':
         optimizer = _joint_2_optimizer
@@ -95,10 +95,12 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
     mu_optimizer = optax.sgd(learning_rate=mu_lr)
     mu_opt_state = mu_optimizer.init(params[2])
 
-    old_likelihood = 1
-    diff = 10
+    old_likelihood, _ = grad_func(p_on, p_off, mu, sigma)
+    old_likelihood +=1
+    diff = -10
+    count = 0
 
-    while diff > 1e-4:
+    while diff < -1e-4:
 
         likelihood, grads = grad_func(p_on, p_off, mu, sigma)
 
@@ -111,13 +113,14 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
 
         mu = optax.apply_updates((mu), mu_update)
 
-        diff = jnp.abs(likelihood - old_likelihood)
+        #diff = jnp.abs(likelihood - old_likelihood)
+        diff = likelihood - old_likelihood
         old_likelihood = likelihood
 
         # print(
         #     f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}'
         #     f', {mu:.4f}, {sigma:.4f}')
-        # print('-'*50)
+        #print('-'*50)
 
     return -1*likelihood, p_on, p_off, mu, sigma
 
