@@ -114,15 +114,15 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
         diff = jnp.abs(likelihood - old_likelihood)
         old_likelihood = likelihood
 
-        print(
-            f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}'
-            f', {mu:.4f}, {sigma:.4f}')
-        print('-'*50)
+        # print(
+        #     f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}'
+        #     f', {mu:.4f}, {sigma:.4f}')
+        # print('-'*50)
 
     return -1*likelihood, p_on, p_off, mu, sigma
 
 
-def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
+def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess):
     '''
     Returns the likelihood of a trace given:
         a count (y),
@@ -160,7 +160,7 @@ def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess=200):
     return -1 * likelihood
 
 
-def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess=200, sigma=0.05):
+def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     '''
     Provides a rough estimate of parameters (p_on, p_off, and mu)
     Grid searches over defined parameter space and returns the minimum
