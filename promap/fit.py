@@ -183,7 +183,7 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     mu_guess = mus[minima_indecies[MU, :]]
     likelihoods = result[tuple(minima_indecies)]
 
-    return p_on_guess, p_off_guess, mu_guess, likelihoods
+    return (p_on_guess, p_off_guess, mu_guess, likelihoods)
 
 
 def _find_minima_3d(test_vec, window):
@@ -203,9 +203,9 @@ def _find_minima_3d(test_vec, window):
         vector_slice = lax.dynamic_slice(vector,
              (p_on_index-window, p_off_index-window, mu_index-window),
              (2*window, 2*window, 2*window))
-        slice_min = jnp.min(vector_slice).astype('int32')
+        slice_min = jnp.min(vector_slice)
         all_same = jnp.all(vector_slice == vector_slice[0])
-        b = jax.lax.cond(all_same, lambda: 0, lambda: slice_min)
+        b = jax.lax.cond(all_same, lambda: 0., lambda: slice_min)
         return b
 
     a = jax.vmap(jax.vmap(jax.vmap(scan_func,
