@@ -218,6 +218,8 @@ def _find_minima_3d(test_vec, window):
                  in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
                                                 p_off_indecies, mu_indecies)
 
-    local_minima = jnp.asarray(jnp.where(a == test_vec))
+    # trim edges because minima at edges cant be local minima
+    new_a = jnp.pad(a[1:-1,1:-1,1:-1], 1)
+    local_minima = jnp.asarray(jnp.where(new_a == test_vec))
 
     return local_minima
