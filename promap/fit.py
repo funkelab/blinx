@@ -195,12 +195,12 @@ def _find_minima_3d(test_vec, window):
     - returns the minima indecies as an array of shape 3 x num_minima
     - for the first axis: 0 = p_on, 1 = p_off, 2 = mu
     '''
-    mu_indecies = jnp.arange(test_vec.shape[2]) \
-        [window:(test_vec.shape[2]-window)]
-    p_off_indecies = jnp.arange(test_vec.shape[0]) \
-        [window:(test_vec.shape[0]-window)]
-    p_on_indecies = jnp.arange(test_vec.shape[0]) \
-        [window:(test_vec.shape[0]-window)]
+    mu_indecies = jnp.arange(test_vec.shape[2]+window) \
+        [window:]
+    p_off_indecies = jnp.arange(test_vec.shape[0]+window) \
+        [window:]
+    p_on_indecies = jnp.arange(test_vec.shape[0]+window) \
+        [window:]
 
     def scan_func(vector, p_on_index, p_off_index, mu_index):
         vector_slice = lax.dynamic_slice(vector,
@@ -211,13 +211,13 @@ def _find_minima_3d(test_vec, window):
         b = jax.lax.cond(all_same, lambda: 0., lambda: slice_min)
         return b
 
+    test_vec_pad = jnp.pad(test_vec, window, mode='maximum')
     a = jax.vmap(jax.vmap(jax.vmap(scan_func,
                  in_axes=(None, None, None, 0)),
                  in_axes=(None, None, 0, None)),
-                 in_axes=(None, 0, None, None))(test_vec, p_on_indecies,
+                 in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
                                                 p_off_indecies, mu_indecies)
 
-    a_pad = jnp.pad(a, window)
-    local_minima = jnp.asarray(jnp.where(a_pad == test_vec))
+    local_minima = jnp.asarray(jnp.where(a == test_vec))
 
     return local_minima
