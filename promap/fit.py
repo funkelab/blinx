@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 import jax
 from jax import lax
 from promap.trace_model import TraceModel
@@ -6,6 +7,29 @@ from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
 from promap.constants import P_ON, P_OFF, MU
 import optax
+
+
+def most_likely_y(trace, y_low, y_high):
+    '''
+
+
+    '''
+
+    y_range = np.arange(y_low, y_high+1)
+    likelihoods = np.zeros((len(y_range)))
+    all_params = np.zeros((len(y_range), 4))
+
+    for i, y in enumerate(y_range):
+        likelihood, params = optimize_params(y,
+            trace=trace,
+            initial_params=None,
+            sigma_guess=0.03)
+        likelihoods[i] = likelihood
+        all_params[i, :] = params
+        print(f'y={y}   likelihood={likelihood:.2f}')
+    most_likely_y = y_range[np.argmax(likelihoods)]
+
+    return most_likely_y, all_params, likelihoods
 
 
 def optimize_params(y,
