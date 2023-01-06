@@ -92,6 +92,7 @@ def optimize_params(y,
         optimizer = _joint_2_optimizer
 
     num_local_minima = len(initial_params[P_ON])
+    # print(f'num_local_minima = {num_local_minima}')
     best_likelihood = None
     for i in range(num_local_minima):
         results = optimizer(p_on=initial_params[P_ON][i],
@@ -120,9 +121,8 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
     mu_opt_state = mu_optimizer.init(params[2])
 
     old_likelihood, _ = grad_func(p_on, p_off, mu, sigma)
-    old_likelihood +=1
+    old_likelihood += 1
     diff = -10
-    count = 0
 
     while diff < -1e-4:
 
@@ -137,14 +137,13 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
 
         mu = optax.apply_updates((mu), mu_update)
 
-        #diff = jnp.abs(likelihood - old_likelihood)
         diff = likelihood - old_likelihood
         old_likelihood = likelihood
 
         # print(
         #     f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}'
         #     f', {mu:.4f}, {sigma:.4f}')
-        #print('-'*50)
+        # print('-'*50)
 
     return -1*likelihood, p_on, p_off, mu, sigma
 
@@ -205,6 +204,11 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
         in_axes=(None, None, 0))(mus, p_s, p_s)
 
     minima_indecies = _find_minima_3d(result, 3)
+    if minima_indecies.shape[1] == 0:
+        print('no local minima found, using median guess values')
+        minima_indecies = np.zeros((3, 1)).astype('uint8')
+        minima_indecies[:, 0] = [10, 10, 50]
+
     p_on_guess = p_s[minima_indecies[P_ON, :]]
     p_off_guess = p_s[minima_indecies[P_OFF, :]]
     mu_guess = mus[minima_indecies[MU, :]]
@@ -219,12 +223,9 @@ def _find_minima_3d(test_vec, window):
     - returns the minima indecies as an array of shape 3 x num_minima
     - for the first axis: 0 = p_on, 1 = p_off, 2 = mu
     '''
-    mu_indecies = jnp.arange(test_vec.shape[2]+window) \
-        [window:]
-    p_off_indecies = jnp.arange(test_vec.shape[0]+window) \
-        [window:]
-    p_on_indecies = jnp.arange(test_vec.shape[0]+window) \
-        [window:]
+    mu_indecies = jnp.arange(test_vec.shape[2]+window)[window:]
+    p_off_indecies = jnp.arange(test_vec.shape[0]+window)[window:]
+    p_on_indecies = jnp.arange(test_vec.shape[0]+window)[window:]
 
     def scan_func(vector, p_on_index, p_off_index, mu_index):
         vector_slice = lax.dynamic_slice(vector,
@@ -237,13 +238,13 @@ def _find_minima_3d(test_vec, window):
 
     test_vec_pad = jnp.pad(test_vec, window, mode='maximum')
     a = jax.vmap(jax.vmap(jax.vmap(scan_func,
-                 in_axes=(None, None, None, 0)),
-                 in_axes=(None, None, 0, None)),
-                 in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
-                                                p_off_indecies, mu_indecies)
+         in_axes=(None, None, None, 0)),
+         in_axes=(None, None, 0, None)),
+         in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
+                                        p_off_indecies, mu_indecies)
 
     # trim edges because minima at edges cant be local minima
-    new_a = jnp.pad(a[1:-1,1:-1,1:-1], 1)
+    new_a = jnp.pad(a[1:-1, 1:-1, 1:-1], 1)
     local_minima = jnp.asarray(jnp.where(new_a == test_vec))
 
     return local_minima
