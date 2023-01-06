@@ -13,7 +13,7 @@ class TestFit(unittest.TestCase):
         local minima of a 3D array
         '''
         test_array = np.ones((100,100,100))*2
-        minima = np.random.randint(10,90,3)
+        minima = np.random.randint(0,99,3)
         test_array[tuple(minima)] = 1
         found_minima = fit._find_minima_3d(test_array, 3)
                 
@@ -31,7 +31,7 @@ class TestFit(unittest.TestCase):
         fit._likelihood_func(y=4, p_on=0.05, p_off=0.05, mu=2000, sigma=0.03,
                              trace=trace, mu_b_guess=5000)
         
-        fit.optimize_params(4, trace, guess_params=[0.1, 0.1, 1000., 0.2],
+        fit.optimize_params(4, trace, initial_params=[[0.1], [0.1], [1000.]],
                             mu_b_guess=5000)
 
         return
