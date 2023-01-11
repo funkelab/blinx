@@ -7,6 +7,9 @@ from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
 from promap.constants import P_ON, P_OFF, MU
 import optax
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def most_likely_y(trace, y_low, y_high):
@@ -16,6 +19,8 @@ def most_likely_y(trace, y_low, y_high):
     '''
 
     y_range = np.arange(y_low, y_high+1)
+    logger.info("Finding most likely y in %s", list(y_range))
+
     likelihoods = np.zeros((len(y_range)))
     all_params = np.zeros((len(y_range), 4))
 
@@ -26,7 +31,7 @@ def most_likely_y(trace, y_low, y_high):
             sigma_guess=0.03)
         likelihoods[i] = likelihood
         all_params[i, :] = params
-        print(f'y={y}   likelihood={likelihood:.2f}')
+        logger.info("y=%d    likelihood=%.2f", y, likelihood)
     most_likely_y = y_range[np.argmax(likelihoods)]
 
     return most_likely_y, all_params, likelihoods
@@ -124,6 +129,15 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
     old_likelihood += 1
     diff = -10
 
+    logger.info(
+        "Optimizing for p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f with "
+        "step size of %f...",
+        p_on,
+        p_off,
+        mu,
+        sigma,
+        mu_lr)
+
     while diff < -1e-4:
 
         likelihood, grads = grad_func(p_on, p_off, mu, sigma)
@@ -140,10 +154,21 @@ def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
         diff = likelihood - old_likelihood
         old_likelihood = likelihood
 
-        # print(
-        #     f'{likelihood:.2f}, {p_on:.4f}, {p_off:.4f}'
-        #     f', {mu:.4f}, {sigma:.4f}')
-        # print('-'*50)
+        logger.debug(
+            "likelihood=%.2f, p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f",
+            likelihood,
+            p_on,
+            p_off,
+            mu,
+            sigma)
+
+    logger.info(
+        "optimum: likelihood=%.2f, p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f",
+        likelihood,
+        p_on,
+        p_off,
+        mu,
+        sigma)
 
     return -1*likelihood, p_on, p_off, mu, sigma
 
@@ -192,6 +217,9 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     Grid searches over defined parameter space and returns the minimum
     log likelihood parameters
     '''
+
+    logger.debug("Finding initial guesses for y=%d...", y)
+
     mus = jnp.linspace(mu_min, jnp.max(trace), 100)
     p_s = jnp.linspace(1e-4, p_max, 20)
 
@@ -213,6 +241,12 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     p_off_guess = p_s[minima_indecies[P_OFF, :]]
     mu_guess = mus[minima_indecies[MU, :]]
     likelihoods = result[tuple(minima_indecies)]
+
+    logger.debug(
+        "...found p_on=%s, p_off=%s, mu=%s",
+        p_on_guess,
+        p_off_guess,
+        mu_guess)
 
     return (p_on_guess, p_off_guess, mu_guess, likelihoods)
 
