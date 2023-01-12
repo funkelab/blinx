@@ -5,7 +5,7 @@ from jax import lax
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
-from promap.constants import P_ON, P_OFF, MU
+from promap.constants import P_ON, P_OFF, MU, SIGMA
 import optax
 import logging
 
@@ -248,7 +248,7 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
         p_off_guess,
         mu_guess)
 
-    return (p_on_guess, p_off_guess, mu_guess, likelihoods)
+    return (p_on_guess, p_off_guess, mu_guess, sigma_guess, likelihoods)
 
 
 def _find_minima_3d(test_vec, window):
@@ -262,20 +262,22 @@ def _find_minima_3d(test_vec, window):
     p_on_indecies = jnp.arange(test_vec.shape[0]+window)[window:]
 
     def scan_func(vector, p_on_index, p_off_index, mu_index):
-        vector_slice = lax.dynamic_slice(vector,
-             (p_on_index-window, p_off_index-window, mu_index-window),
-             (2*window, 2*window, 2*window))
+        vector_slice = lax.dynamic_slice(
+            vector,
+            (p_on_index-window, p_off_index-window, mu_index-window),
+            (2*window, 2*window, 2*window))
         slice_min = jnp.min(vector_slice)
         all_same = jnp.all(vector_slice == vector_slice[0])
         b = jax.lax.cond(all_same, lambda: 0., lambda: slice_min)
         return b
 
     test_vec_pad = jnp.pad(test_vec, window, mode='maximum')
-    a = jax.vmap(jax.vmap(jax.vmap(scan_func,
-         in_axes=(None, None, None, 0)),
-         in_axes=(None, None, 0, None)),
-         in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
-                                        p_off_indecies, mu_indecies)
+    a = jax.vmap(jax.vmap(jax.vmap(
+        scan_func,
+        in_axes=(None, None, None, 0)),
+        in_axes=(None, None, 0, None)),
+        in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
+                                       p_off_indecies, mu_indecies)
 
     # trim edges because minima at edges cant be local minima
     new_a = jnp.pad(a[1:-1, 1:-1, 1:-1], 1)
