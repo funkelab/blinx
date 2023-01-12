@@ -29,13 +29,13 @@ def most_likely_y(trace, y_low, y_high):
             y,
             trace=trace,
             initial_params=None,
-            sigma_guess=0.03)
+            sigma_guess=0.1)
         likelihoods[i] = likelihood
         all_params[i, :] = params
         logger.info("y=%d    likelihood=%.2f", y, likelihood)
     most_likely_y = y_range[np.argmax(likelihoods)]
 
-    return most_likely_y, all_params, likelihoods
+    return most_likely_y, all_params, likelihoods, list(y_range)
 
 
 def optimize_params(
@@ -114,7 +114,7 @@ def optimize_params(
         mu_lr,
         grad_func)
 
-    return likelihood, p_on, p_off, mu, sigma
+    return likelihood, [p_on, p_off, mu, sigma]
 
 
 def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
