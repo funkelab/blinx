@@ -5,7 +5,7 @@ from jax import lax
 from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
-from promap.constants import P_ON, P_OFF, MU
+from promap.constants import P_ON, P_OFF, MU, SIGMA
 import optax
 import logging
 
@@ -25,25 +25,27 @@ def most_likely_y(trace, y_low, y_high):
     all_params = np.zeros((len(y_range), 4))
 
     for i, y in enumerate(y_range):
-        likelihood, params = optimize_params(y,
+        likelihood, params = optimize_params(
+            y,
             trace=trace,
             initial_params=None,
-            sigma_guess=0.03)
+            sigma_guess=0.1)
         likelihoods[i] = likelihood
         all_params[i, :] = params
         logger.info("y=%d    likelihood=%.2f", y, likelihood)
     most_likely_y = y_range[np.argmax(likelihoods)]
 
-    return most_likely_y, all_params, likelihoods
+    return most_likely_y, all_params, likelihoods, list(y_range)
 
 
-def optimize_params(y,
+def optimize_params(
+        y,
         trace,
-        optimize_meth='joint_2_optimizer',
         initial_params=None,
-        sigma_guess=0.2,
+        optimize_meth='joint_2_optimizer',
         mu_b_guess=5000,
-        mu_lr=5):
+        mu_lr=5,
+        sigma_guess=0.2):
     '''
     Fit kinetic (p_on / off) and emission (mu / sigma) parameters
     to an intensity trace for a given value of y
@@ -57,16 +59,12 @@ def optimize_params(y,
             - shape (number_observations, )
 
         initial_params (list of arrays) (float) or None:
-            - initial guesses for p_on, p_off, and mu
-            - format list([P_ON], [P_OFF], [MU])
+            - initial guesses for p_on, p_off, mu, and sigma
+            - format list([P_ON], [P_OFF], [MU], [SIGMA])
             - if None, then will automatically find initial guesses
 
         optimize_meth (string):
             - specifies the optimizer to use for gradient descent
-
-        sigma_guess (float):
-            - initial guess for sigma
-            - is the easiest param to fit so no need for multiple guesses
 
         mu_b_guess (float / int):
             - guess for background intensity value
@@ -81,96 +79,96 @@ def optimize_params(y,
         as well as the optimum values of p_on, p_off, mu, and sigma
     '''
 
-    # Define the loss function for grad descent
-    bound_likelihood = lambda p_on, p_off, mu, sigma: _likelihood_func(y,
-        p_on, p_off, mu, sigma, trace,
-        mu_b_guess=mu_b_guess)
-    grad_func = jax.jit(
-        jax.value_and_grad(bound_likelihood, argnums=(0, 1, 2, 3)))
+    def index_likelihood_func(
+            index, y, p_on, p_off, mu, sigma, trace, mu_b_guess):
+        return _likelihood_func(
+            y, p_on[index], p_off[index], mu[index],
+            sigma[index], trace, mu_b_guess)
 
-    # find initial guesses for the 4 parameters
+    bound_likelihood = lambda index, p_on, p_off, mu, sigma: \
+        index_likelihood_func(
+            index, y, p_on, p_off, mu, sigma, trace,
+            mu_b_guess=mu_b_guess)
+
+    grad_func = jax.jit(
+        jax.value_and_grad(bound_likelihood, argnums=(1, 2, 3, 4)))
+
     if initial_params is None:
-        initial_params = _initial_guesses(mu_min=100, p_max=0.2, y=y,
-              trace=trace, mu_b_guess=mu_b_guess, sigma=sigma_guess)
+        initial_params = _initial_guesses(
+            mu_min=100, p_max=0.2, y=y, trace=trace,
+            mu_b_guess=mu_b_guess, sigma=sigma_guess)
 
     if optimize_meth == 'joint_2_optimizer':
-        optimizer = _joint_2_optimizer
+        optimizer = _optimizer_1
 
-    num_local_minima = len(initial_params[P_ON])
-    # print(f'num_local_minima = {num_local_minima}')
-    best_likelihood = None
-    for i in range(num_local_minima):
-        results = optimizer(p_on=initial_params[P_ON][i],
-            p_off=initial_params[P_OFF][i],
-            mu=initial_params[MU][i],
-            sigma=sigma_guess,
-            mu_lr=mu_lr, grad_func=grad_func)
+    p_ons = initial_params[P_ON]
+    p_offs = initial_params[P_OFF]
+    mus = initial_params[MU]
+    sigmas = initial_params[SIGMA]
 
-        if best_likelihood is None or results[0] > best_likelihood:
-            best_likelihood = results[0]
-            best_params = results[1:]
+    likelihood, p_on, p_off, mu, sigma = optimizer(
+        p_ons,
+        p_offs,
+        mus,
+        sigmas,
+        mu_lr,
+        grad_func)
 
-    return best_likelihood, best_params
+    return likelihood, [p_on, p_off, mu, sigma]
 
 
-def _joint_2_optimizer(p_on, p_off, mu, sigma, mu_lr, grad_func):
-    '''
-    - optimize all 4 parameters jointly
-    - seperate optimizer for mu, but all 4 params fit at the same time
-    '''
-    params = (p_on, p_off, mu, sigma)
+def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
+
+    indecies = jnp.arange(len(p_ons))
+
+    params = (p_ons, p_offs, mus, sigmas)
     optimizer = optax.adam(learning_rate=1e-3, mu_dtype='uint64')
     opt_state = optimizer.init(params)
 
     mu_optimizer = optax.sgd(learning_rate=mu_lr)
     mu_opt_state = mu_optimizer.init(params[2])
 
-    old_likelihood, _ = grad_func(p_on, p_off, mu, sigma)
-    old_likelihood += 1
+    old_likelihoods, _ = jax.vmap(
+        grad_func, in_axes=(0, None, None, None, None))(
+        indecies, p_ons, p_offs, mus, sigmas)
+
+    old_likelihoods += 1
     diff = -10
 
-    logger.info(
-        "Optimizing for p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f with "
-        "step size of %f...",
-        p_on,
-        p_off,
-        mu,
-        sigma,
-        mu_lr)
-
     while diff < -1e-4:
-
-        likelihood, grads = grad_func(p_on, p_off, mu, sigma)
+        likelihoods, grads = jax.vmap(
+            grad_func, in_axes=(0, None, None, None, None))(
+            indecies, p_ons, p_offs, mus, sigmas)
 
         updates, opt_state = optimizer.update(grads, opt_state)
 
         mu_update, mu_opt_state = mu_optimizer.update(grads[2], mu_opt_state)
 
-        p_on, p_off, _, sigma = optax.apply_updates((p_on, p_off, mu, sigma),
-            updates)
+        p_ons, p_offs, _, sigmas = optax.apply_updates((
+            p_ons, p_offs, mus, sigmas), updates)
 
-        mu = optax.apply_updates((mu), mu_update)
+        mus = optax.apply_updates((mus), mu_update)
 
-        diff = likelihood - old_likelihood
-        old_likelihood = likelihood
+        p_ons = p_ons[indecies, indecies]
+        p_offs = p_offs[indecies, indecies]
+        mus = mus[indecies, indecies]
+        sigmas = sigmas[indecies, indecies]
+
+        diff = jnp.min(likelihoods - old_likelihoods)
+        old_likelihoods = likelihoods
 
         logger.debug(
             "likelihood=%.2f, p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f",
-            likelihood,
-            p_on,
-            p_off,
-            mu,
-            sigma)
+            likelihoods,
+            p_ons,
+            p_offs,
+            mus,
+            sigmas)
 
-    logger.info(
-        "optimum: likelihood=%.2f, p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f",
-        likelihood,
-        p_on,
-        p_off,
-        mu,
-        sigma)
+    b_index = jnp.argmin(likelihoods)
 
-    return -1*likelihood, p_on, p_off, mu, sigma
+    return -1*likelihoods[b_index], p_ons[b_index], \
+        p_offs[b_index], mus[b_index], sigmas[b_index]
 
 
 def _likelihood_func(y, p_on, p_off, mu, sigma, trace, mu_b_guess):
@@ -223,10 +221,11 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     mus = jnp.linspace(mu_min, jnp.max(trace), 100)
     p_s = jnp.linspace(1e-4, p_max, 20)
 
-    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(y, p_on,
-        p_off, mu, sigma, trace, mu_b_guess)
+    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(
+        y, p_on, p_off, mu, sigma, trace, mu_b_guess)
 
-    result = jax.vmap(jax.vmap(jax.vmap(bound_likelihood,
+    result = jax.vmap(jax.vmap(jax.vmap(
+        bound_likelihood,
         in_axes=(0, None, None)),
         in_axes=(None, 0, None)),
         in_axes=(None, None, 0))(mus, p_s, p_s)
@@ -240,6 +239,7 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     p_on_guess = p_s[minima_indecies[P_ON, :]]
     p_off_guess = p_s[minima_indecies[P_OFF, :]]
     mu_guess = mus[minima_indecies[MU, :]]
+    sigma_guess = jnp.ones((mu_guess.shape)) * sigma
     likelihoods = result[tuple(minima_indecies)]
 
     logger.debug(
@@ -248,7 +248,7 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
         p_off_guess,
         mu_guess)
 
-    return (p_on_guess, p_off_guess, mu_guess, likelihoods)
+    return (p_on_guess, p_off_guess, mu_guess, sigma_guess, likelihoods)
 
 
 def _find_minima_3d(test_vec, window):
@@ -262,20 +262,22 @@ def _find_minima_3d(test_vec, window):
     p_on_indecies = jnp.arange(test_vec.shape[0]+window)[window:]
 
     def scan_func(vector, p_on_index, p_off_index, mu_index):
-        vector_slice = lax.dynamic_slice(vector,
-             (p_on_index-window, p_off_index-window, mu_index-window),
-             (2*window, 2*window, 2*window))
+        vector_slice = lax.dynamic_slice(
+            vector,
+            (p_on_index-window, p_off_index-window, mu_index-window),
+            (2*window, 2*window, 2*window))
         slice_min = jnp.min(vector_slice)
         all_same = jnp.all(vector_slice == vector_slice[0])
         b = jax.lax.cond(all_same, lambda: 0., lambda: slice_min)
         return b
 
     test_vec_pad = jnp.pad(test_vec, window, mode='maximum')
-    a = jax.vmap(jax.vmap(jax.vmap(scan_func,
-         in_axes=(None, None, None, 0)),
-         in_axes=(None, None, 0, None)),
-         in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
-                                        p_off_indecies, mu_indecies)
+    a = jax.vmap(jax.vmap(jax.vmap(
+        scan_func,
+        in_axes=(None, None, None, 0)),
+        in_axes=(None, None, 0, None)),
+        in_axes=(None, 0, None, None))(test_vec_pad, p_on_indecies,
+                                       p_off_indecies, mu_indecies)
 
     # trim edges because minima at edges cant be local minima
     new_a = jnp.pad(a[1:-1, 1:-1, 1:-1], 1)
