@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def most_likely_y(trace, y_low, y_high):
+def most_likely_y(trace, y_low, y_high, mu_min=None):
     '''
 
 
@@ -29,7 +29,8 @@ def most_likely_y(trace, y_low, y_high):
             y,
             trace=trace,
             initial_params=None,
-            sigma_guess=0.1)
+            sigma_guess=0.1,
+            mu_min=mu_min)
         likelihoods[i] = likelihood
         all_params[i, :] = params
         logger.info("y=%d    likelihood=%.2f", y, likelihood)
@@ -45,7 +46,8 @@ def optimize_params(
         optimize_meth='joint_2_optimizer',
         mu_b_guess=5000,
         mu_lr=5,
-        sigma_guess=0.2):
+        sigma_guess=0.2,
+        mu_min=None):
     '''
     Fit kinetic (p_on / off) and emission (mu / sigma) parameters
     to an intensity trace for a given value of y
@@ -112,12 +114,13 @@ def optimize_params(
         mus,
         sigmas,
         mu_lr,
-        grad_func)
+        grad_func,
+        mu_min)
 
     return likelihood, [p_on, p_off, mu, sigma]
 
 
-def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
+def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func, mu_min):
 
     indecies = jnp.arange(len(p_ons))
 
@@ -164,6 +167,10 @@ def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
             p_offs,
             mus,
             sigmas)
+
+        if mu_min is not None and jnp.min(mus) <= mu_min:
+            index = jnp.where(mus < mu_min)
+            mus = mus.at[index].set(mu_min)
 
     b_index = jnp.argmin(likelihoods)
 
