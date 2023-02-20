@@ -22,7 +22,7 @@ def most_likely_y(trace, y_low, y_high):
     logger.info("Finding most likely y in %s", list(y_range))
 
     likelihoods = np.zeros((len(y_range)))
-    all_params = np.zeros((len(y_range), 4))
+    all_params = np.zeros((len(y_range), 5))
 
     for i, y in enumerate(y_range):
         likelihood, params = optimize_params(
@@ -114,7 +114,7 @@ def optimize_params(
         mu_lr,
         grad_func)
 
-    return likelihood, [p_on, p_off, mu, sigma]
+    return likelihood, [p_on, p_off, mu, sigma, y]
 
 
 def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
