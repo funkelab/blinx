@@ -12,7 +12,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def most_likely_y(trace, y_low, y_high):
+def most_likely_y(
+        trace,
+        y_low,
+        y_high,
+        mu_b_guess=5000):
     '''
 
 
@@ -157,8 +161,8 @@ def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
         diff = jnp.min(likelihoods - old_likelihoods)
         old_likelihoods = likelihoods
 
-        #logger.debug(
-        print("likelihood=%.2f, p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f",
+        logger.debug(
+            "likelihood=%.2f, p_on=%.4f, p_off=%.4f, mu=%.4f, sigma=%.4f",
             likelihoods,
             p_ons,
             p_offs,
