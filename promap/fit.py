@@ -46,7 +46,6 @@ def optimize_params(
         y,
         trace,
         initial_params=None,
-        optimize_meth='joint_2_optimizer',
         mu_b_guess=5000,
         mu_lr=5,
         sigma_guess=0.2):
@@ -67,9 +66,6 @@ def optimize_params(
             - format list([P_ON], [P_OFF], [MU], [SIGMA])
             - if None, then will automatically find initial guesses
 
-        optimize_meth (string):
-            - specifies the optimizer to use for gradient descent
-
         mu_b_guess (float / int):
             - guess for background intensity value
 
@@ -89,8 +85,8 @@ def optimize_params(
             y, p_on[index], p_off[index], mu[index],
             sigma[index], trace, mu_b_guess)
 
-    bound_likelihood = lambda index, p_on, p_off, mu, sigma: \
-        index_likelihood_func(
+    def bound_likelihood(index, p_on, p_off, mu, sigma):
+        return index_likelihood_func(
             index, y, p_on, p_off, mu, sigma, trace,
             mu_b_guess=mu_b_guess)
 
@@ -102,15 +98,12 @@ def optimize_params(
             mu_min=100, p_max=0.2, y=y, trace=trace,
             mu_b_guess=mu_b_guess, sigma=sigma_guess)
 
-    if optimize_meth == 'joint_2_optimizer':
-        optimizer = _optimizer_1
-
     p_ons = initial_params[P_ON]
     p_offs = initial_params[P_OFF]
     mus = initial_params[MU]
     sigmas = initial_params[SIGMA]
 
-    likelihood, p_on, p_off, mu, sigma = optimizer(
+    likelihood, p_on, p_off, mu, sigma = optimize(
         p_ons,
         p_offs,
         mus,
@@ -121,7 +114,7 @@ def optimize_params(
     return likelihood, [p_on, p_off, mu, sigma, y, likelihood]
 
 
-def _optimizer_1(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
+def optimize(p_ons, p_offs, mus, sigmas, mu_lr, grad_func):
 
     indecies = jnp.arange(len(p_ons))
 
@@ -225,8 +218,9 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     mus = jnp.linspace(mu_min, jnp.max(trace), 100)
     p_s = jnp.linspace(1e-4, p_max, 20)
 
-    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(
-        y, p_on, p_off, mu, sigma, trace, mu_b_guess)
+    def bound_likelihood(mu, p_on, p_off):
+        return _likelihood_func(
+            y, p_on, p_off, mu, sigma, trace, mu_b_guess)
 
     result = jax.vmap(jax.vmap(jax.vmap(
         bound_likelihood,

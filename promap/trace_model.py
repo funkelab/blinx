@@ -83,8 +83,8 @@ class TraceModel:
         initial_state = jnp.expand_dims(random.categorical(subkey, p_initial),
                                         axis=0)
 
-        scan2 = lambda state, key: self._scan_generate(state, key,
-            transition_m)
+        def scan2(state, key):
+            return self._scan_generate(state, key, transition_m)
 
         # add 100 frames, then remove first 100 to allow system to
         # come to equillibrium
@@ -108,10 +108,11 @@ class TraceModel:
         initial_values = initial_values * scale_factor_initial
         p_transition = transition_m
 
-        scan_f_2 = lambda p_accumulate, p_emission: self._scan_likelihood(
-                                                                 p_accumulate,
-                                                                 p_emission,
-                                                                 p_transition)
+        def scan_f_2(p_accumulate, p_emission):
+            return self._scan_likelihood(
+                p_accumulate,
+                p_emission,
+                p_transition)
 
         final, result = lax.scan(scan_f_2, initial_values, probs.T)
 
@@ -133,8 +134,10 @@ class TraceModel:
                 - the optimal or most likely sequence of states
         '''
         probs = self.fluorescence_model.p_x_given_zs(trace, y)
-        trans_m = transition_matrix.create_transition_matrix(y,
-             self.p_on, self.p_off)
+        trans_m = transition_matrix.create_transition_matrix(
+            y,
+            self.p_on,
+            self.p_off)
         p_init = transition_matrix.p_initial(y, trans_m)
 
         num_states = trans_m.shape[0]

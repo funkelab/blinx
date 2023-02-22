@@ -119,11 +119,3 @@ def array_list(image, xs, ys, pixels):
             y_list.append(ys + y)
 
     return x_list, y_list
-
-
-if __name__ == '__main__':
-    image_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1.tif'
-    pick_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_picked.hdf5'
-    drift_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_221014_110734_drift.txt'
-    trace = extract_trace(image_file_path, pick_file_path, drift_file_path,
-                          spot_num=0, pixels=2, all_spots=True)
