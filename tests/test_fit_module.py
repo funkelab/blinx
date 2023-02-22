@@ -48,7 +48,7 @@ class TestFit(unittest.TestCase):
     
     def test_find_y(self):
         f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma_i=0.03)
-        t_model = TraceModel(f_model, p_on = 0.05, p_off = 0.05)
+        t_model = TraceModel(f_model, p_on = 0.1, p_off = 0.02)
         trace, states = t_model.generate_trace(4, 11, 1000)
         
         likelihoods = []
