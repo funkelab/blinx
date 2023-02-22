@@ -89,8 +89,8 @@ def optimize_params(
             y, p_on[index], p_off[index], mu[index],
             sigma[index], trace, mu_b_guess)
 
-    bound_likelihood = lambda index, p_on, p_off, mu, sigma: \
-        index_likelihood_func(
+    def bound_likelihood(index, p_on, p_off, mu, sigma):
+        return index_likelihood_func(
             index, y, p_on, p_off, mu, sigma, trace,
             mu_b_guess=mu_b_guess)
 
@@ -225,8 +225,9 @@ def _initial_guesses(mu_min, p_max, y, trace, mu_b_guess, sigma=0.05):
     mus = jnp.linspace(mu_min, jnp.max(trace), 100)
     p_s = jnp.linspace(1e-4, p_max, 20)
 
-    bound_likelihood = lambda mu, p_on, p_off: _likelihood_func(
-        y, p_on, p_off, mu, sigma, trace, mu_b_guess)
+    def bound_likelihood(mu, p_on, p_off):
+        return _likelihood_func(
+            y, p_on, p_off, mu, sigma, trace, mu_b_guess)
 
     result = jax.vmap(jax.vmap(jax.vmap(
         bound_likelihood,
