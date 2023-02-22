@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 import numpy as np
-from promap import fit
+from promap import fit, ParameterRanges
 from promap.fluorescence_model import FluorescenceModel
 from promap.trace_model import TraceModel
 import unittest
@@ -31,30 +31,30 @@ class TestFit(unittest.TestCase):
         fit._likelihood_func(y=4, p_on=0.05, p_off=0.05, mu=2000, sigma=0.03,
                              trace=trace, mu_b_guess=5000)
         
-        fit.optimize_params(4, trace, initial_params=[[0.1], [0.1], [1000.]],
-                            mu_b_guess=5000)
+        fit.optimize_params(4, trace, ParameterRanges())
 
         return
     
-    def test_initial_guess(self):
-        f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma_i=0.03)
-        t_model = TraceModel(f_model, p_on = 0.05, p_off = 0.05)
-        trace, states = t_model.generate_trace(4, 10, 1000)
-        
-        initial_guesses = fit._initial_guesses(100, 0.2, y=6, trace=trace,
-                                               mu_b_guess = 5000)
-        self.assertTrue(initial_guesses)
-        return
-    
     def test_find_y(self):
+        # TODO: p_max is 1.0 by default now
         f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma_i=0.03)
         t_model = TraceModel(f_model, p_on = 0.1, p_off = 0.02)
         trace, states = t_model.generate_trace(4, 11, 1000)
         
         likelihoods = []
+        parameter_ranges = ParameterRanges(
+            mu_range=(1000, 3000),
+            mu_bg_range=(5000, 5000),
+            sigma_range=(0.03, 0.03),
+            p_on_range=(0.05, 0.15),
+            p_off_range=(0.01, 0.03),
+            mu_step=3,
+            mu_bg_step=1,
+            sigma_step=1,
+            p_on_step=3,
+            p_off_step=3)
         for y in range(2,7):
-            a, b = fit.optimize_params(y, trace = trace,
-               initial_params=None)
+            a, b = fit.optimize_params(y, trace, parameter_ranges)
             likelihoods = np.append(likelihoods, a)
             print(f'y:{y}  likelihood: {a:.2f})')
             
