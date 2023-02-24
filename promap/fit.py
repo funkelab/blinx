@@ -1,17 +1,17 @@
-from .hyper_parameters import HyperParameters
-from .optimizer import create_optimizer
-from .parameter_ranges import ParameterRanges
-from jax import lax
-from promap import transition_matrix
-from promap.constants import (
+from . import transition_matrix
+from .constants import (
     PARAM_MU,
     PARAM_MU_BG,
     PARAM_SIGMA,
     PARAM_P_ON,
     PARAM_P_OFF)
-from promap.constants import P_ON, P_OFF, MU, SIGMA
-from promap.fluorescence_model import FluorescenceModel
-from promap.trace_model import TraceModel
+from .constants import P_ON, P_OFF, MU, SIGMA
+from .fluorescence_model import FluorescenceModel
+from .hyper_parameters import HyperParameters
+from .optimizer import create_optimizer
+from .parameter_ranges import ParameterRanges
+from .trace_model import TraceModel
+from jax import lax
 import jax
 import jax.numpy as jnp
 import logging
