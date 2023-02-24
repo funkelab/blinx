@@ -6,10 +6,318 @@ from promap.trace_model import TraceModel
 from promap.fluorescence_model import FluorescenceModel
 from promap import transition_matrix
 from promap.constants import P_ON, P_OFF, MU, SIGMA
+from promap.constants import (
+    PARAM_MU,
+    PARAM_MU_BG,
+    PARAM_SIGMA,
+    PARAM_P_ON,
+    PARAM_P_OFF)
+from .parameter_ranges import ParameterRanges
+from .hyper_parameters import HyperParameters
+from .optimizer import create_optimizer
 import optax
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def most_likely_ys(
+        traces,
+        y_low,
+        y_high,
+        parameter_ranges=None,
+        hyper_parameters=None):
+    """Infer the most likely number of fluorophores for the given traces.
+
+    Args:
+
+        traces (tensor of shape `(n, t)`):
+
+            A list of `n` intensity traces over time.
+
+        y_low, y_high (int):
+
+            The minimal and maximal `y` (number of fluorophores) to consider.
+
+        parameter_ranges (:class:`ParameterRanges`, optional):
+
+            The parameter ranges to consider for the fluorescence and trace
+            model.
+
+        hyper_parameters (:class:`HyperParameters`, optional):
+
+            The hyperparameters used for the maximum likelihood estimation.
+
+    Returns:
+
+        A tuple `(most_likely_ys, parameters, likelihoods)`. `most_likely_ys`
+        contains the maximum likelihood solution for each trace (shape `(n,)`).
+        `parameters` contains the optimal set of fluorescence and trace model
+        parameters for each trace and y (shape `(n, m, k)`, where `m` is the
+        number of ys considered and `k` the number of parameters. `likelihoods`
+        contains the maximum likelihood for each trace and y (shape `(n, m)`).
+    """
+
+    # use defaults if not given
+
+    if parameter_ranges is None:
+        parameter_ranges = ParameterRanges()
+    if hyper_parameters is None:
+        hyper_parameters = HyperParameters()
+
+    # fit model for each y separately
+
+    all_parameters = []
+    all_likelihoods = []
+    for y in range(y_low, y_high + 1):
+
+        parameters, likelihoods = fit_traces(
+            y,
+            traces,
+            parameter_ranges,
+            hyper_parameters)
+
+        all_parameters.append(parameters)
+        all_likelihoods.append(likelihoods)
+
+    all_parameters = jnp.array(all_parameters)
+    all_likelihoods = jnp.array(all_likelihoods)
+
+    most_likely_ys = jnp.argmax(all_likelihoods, axis=1) + y_low
+
+    return most_likely_ys, all_parameters, all_likelihoods
+
+
+def fit_traces(
+        y,
+        traces,
+        parameter_ranges,
+        hyper_parameters):
+    """Fit the fluorescence and trace model to the given traces, assuming that
+    `y` fluorophores are present in each trace.
+
+    Args:
+
+        y (int):
+
+            The number of fluorophores to consider.
+
+        traces (tensor of shape `(n, t)`):
+
+            A list of `n` intensity traces over time.
+
+        parameter_ranges (:class:`ParameterRanges`, optional):
+
+            The parameter ranges to consider for the fluorescence and trace
+            model.
+
+        hyper_parameters (:class:`HyperParameters`, optional):
+
+            The hyperparameters used for the maximum likelihood estimation.
+
+    Returns:
+
+        A tuple `(parameters, likelihoods)`. `parameters` contains the optimal
+        set of fluorescence and trace model parameters for each trace (shape
+        `(n, k)`, where `k` is the number of parameters. `likelihoods` contains
+        the maximum likelihood for each trace (shape `(n,)`).
+    """
+
+    # traces: (n, t)
+    # parameter_guesses: (n, g, k)
+    # optimizer_states: (n, g, ...)
+    # parameters: (n, g, k)
+    # likelihoods: (n, g)
+    # is_done: (n, g)
+    #
+    # t = length of trace
+    # n = number of traces
+    # g = number of guesses
+    # k = number of parameters
+
+    # get initial guesses for each trace, given the parameter ranges
+
+    parameter_guesses = jax.vmap(
+        get_initial_guesses,
+        in_axes=(None, 0, None, None))(
+            y,
+            traces,
+            parameter_ranges,
+            hyper_parameters.num_guesses)
+
+    num_traces = parameter_guesses.shape[0]
+    num_guesses = parameter_guesses.shape[1]
+
+    # create the objective function for the given y, as well as its gradient
+    # function
+
+    likelihood_grad_func = jax.value_and_grad(
+        lambda t, p: get_likelihood(y, t, p),
+        argnums=1)
+
+    # create an optimizer, which will be shared between all optimizations
+
+    optimizer = create_optimizer(likelihood_grad_func, hyper_parameters)
+
+    # create optimizer states for each trace and parameter guess
+
+    optimizer_states = jax.vmap(jax.vmap(optimizer.init))(parameter_guesses)
+
+    # optimize each trace and parameter guess in parallel until all of them
+    # converged
+    #
+    # we do this with two nested vmaps:
+    #
+    #   vmap_parameters(trace, parameters, optimizer_states)
+    #
+    # and
+    #
+    #   vmap_traces(traces, parameters, optimizer_states)
+
+    # vmap over parameter guesses and their corresponding optimizers
+    vmap_parameters = jax.vmap(
+        # just fit_trace, but with optimizer and epoch_length bound
+        lambda t, p, os: fit_trace(
+            t,
+            p,
+            os,
+            optimizer,
+            hyper_parameters.epoch_length),
+        in_axes=(None, 0, 0))
+    # vmap over traces
+    vmap_traces = jax.vmap(vmap_parameters, in_axes=(0, 0, 0))
+
+    # final epoch fit function
+    fit_epoch = jax.jit(vmap_traces)
+
+    # initial conditions
+    parameters = parameter_guesses
+    is_done = jnp.zeros((num_traces, num_guesses), dtype='bool')
+
+    while not jnp.all(is_done):
+
+        # optimize each trace and guess in parallel for one epoch
+
+        parameters, optimizer_states, likelihoods, is_done = fit_epoch(
+                traces,
+                parameters,
+                optimizer_states)
+
+        print("likelihoods:")
+        print(likelihoods)
+
+        print("is_done:")
+        print(is_done)
+
+    # for each trace, keep the best parameter/likelihood
+
+    best_guesses = jnp.argmax(likelihoods, axis=1)
+
+    best_parameters = jnp.array([
+        parameters[t, i]
+        for t, i in enumerate(best_guesses)
+    ])
+    best_likelihoods = jnp.array([
+        likelihoods[t, i]
+        for t, i in enumerate(best_guesses)
+    ])
+
+    return best_parameters, best_likelihoods
+
+
+def fit_trace(
+        trace,
+        parameters,
+        optimizer_state,
+        optimizer,
+        num_iterations):
+    """Fit a single trace and parameter pair, using the given optimizer.
+
+    Returns:
+
+        A tuple `(parameters, optimizer_state, likelihood, is_done)`
+    """
+
+    # call optimizer.step() num_iterations times, collect all likelihoods along
+    # the way
+
+    # the following is a little helper to do that with jax.scan:
+    def step(carry, _):
+        parameters, optimizer_state = carry
+        parameters, likelihood, optimizer_state = optimizer.step(
+            trace,
+            parameters,
+            optimizer_state)
+        return (parameters, optimizer_state), likelihood
+
+    (parameters, optimizer_state), likelihoods = lax.scan(
+        step,
+        (parameters, optimizer_state),  # carry init
+        [],  # x to scan over (nothing in our case)
+        length=num_iterations)  # number of scan steps
+
+    # mark as done if the most recent likelihoods do not differ by a lot
+
+    is_done = jnp.abs(likelihoods[-1] - likelihoods[-2]) < 1e-4
+
+    return parameters, optimizer_state, likelihoods[-1], is_done
+
+
+def get_initial_guesses(y, trace, parameter_ranges, num_guesses):
+
+    # TODO: this is just a dummy implementation that simply returns the first
+    # num_guesses parameters
+
+    return parameter_ranges.to_tensor()[:num_guesses]
+
+
+def get_likelihood(y, trace, parameters):
+    '''
+    Returns the likelihood of a trace given:
+        a count (y),
+        kinetic parameters (p_on & p_off), and
+        emission parameters (mu & sigma)
+    '''
+
+    mu = parameters[PARAM_MU]
+    mu_bg = parameters[PARAM_MU_BG]
+    sigma = parameters[PARAM_SIGMA]
+    p_on = parameters[PARAM_P_ON]
+    p_off = parameters[PARAM_P_OFF]
+
+    fluorescence_model = FluorescenceModel(
+        mu_i=mu,
+        sigma_i=sigma,
+        mu_b=mu_bg)
+    t_model = TraceModel(fluorescence_model)
+
+    probs = t_model.fluorescence_model.p_x_given_zs(trace, y)
+
+    comb_matrix = transition_matrix._create_comb_matrix(y)
+    comb_matrix_slanted = transition_matrix._create_comb_matrix(
+        y,
+        slanted=True)
+
+    def c_transition_matrix_2(p_on, p_off):
+        return transition_matrix.create_transition_matrix(
+            y, p_on, p_off,
+            comb_matrix,
+            comb_matrix_slanted)
+
+    transition_mat = c_transition_matrix_2(p_on, p_off)
+    p_initial = transition_matrix.p_initial(y, transition_mat)
+    likelihood = t_model.get_likelihood(
+        probs,
+        transition_mat,
+        p_initial)
+
+    # need to flip to positive value for grad descent
+    return -1 * likelihood
+
+# ---------------------------------------------------------------
+# FIXME: functions above replace the functions below
+#        -> remove once the above is tested and working
+# ---------------------------------------------------------------
 
 
 def most_likely_y(
