@@ -258,6 +258,8 @@ def fit_trace(
 
     # mark as done if the most recent likelihoods do not differ by a lot
 
+    # FIXME: pull out into separate function, implement more robust stopping
+    # criterion (relative change over last n iterations)
     is_done = jnp.abs(likelihoods[-1] - likelihoods[-2]) < 1e-4
 
     return parameters, optimizer_state, likelihoods[-1], is_done
@@ -312,6 +314,7 @@ def get_likelihood(y, trace, parameters):
         p_initial)
 
     # need to flip to positive value for grad descent
+    # FIXME: invert gradients in optimizer instead
     return -1 * likelihood
 
 # ---------------------------------------------------------------
