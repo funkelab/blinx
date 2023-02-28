@@ -339,7 +339,7 @@ def _find_minima_nd(matrix, num_minima):
 
     e = matrix.reshape(np.product(matrix.shape))
 
-    return parameter_ranges.to_tensor()[:num_guesses]
+    return b[jnp.where(d == e, size=num_minima)]
 
 
 def get_likelihood(y, trace, parameters):
