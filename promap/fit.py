@@ -83,7 +83,7 @@ def most_likely_ys(
     all_parameters = jnp.array(all_parameters)
     all_likelihoods = jnp.array(all_likelihoods)
 
-    most_likely_ys = jnp.argmax(all_likelihoods, axis=1) + y_low
+    most_likely_ys = jnp.argmin(all_likelihoods, axis=0) + y_low
 
     return most_likely_ys, all_parameters, all_likelihoods
 
