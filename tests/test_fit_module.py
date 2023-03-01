@@ -4,6 +4,7 @@ from promap import fit
 from promap.parameter_ranges import ParameterRanges
 from promap.fluorescence_model import FluorescenceModel
 from promap.trace_model import TraceModel
+from promap.hyper_parameters import HyperParameters
 import unittest
 
 
@@ -55,19 +56,37 @@ class TestFit(unittest.TestCase):
 
     def test_find_y(self):
         f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma_i=0.03)
-        t_model = TraceModel(f_model, p_on=0.1, p_off=0.02)
-        trace, states = t_model.generate_trace(4, 11, 1000)
+        t_model = TraceModel(f_model, p_on=0.05, p_off=0.05)
 
-        likelihoods = []
-        for y in range(2, 7):
-            a, b = fit.optimize_params(
-                y,
-                trace=trace,
-                initial_params=None)
-            likelihoods = np.append(likelihoods, a)
-            print(f'y:{y}  likelihood: {a:.2f})')
+        parameter_ranges = ParameterRanges(
+            mu_range=(1000, 3000),
+            mu_bg_range=(5000, 5000),
+            sigma_range=(0.1, 0.1),
+            p_on_range=(0.001, 0.1),
+            p_off_range=(0.001, 0.1),
+            mu_step=5,
+            mu_bg_step=1,
+            sigma_step=1,
+            p_on_step=5,
+            p_off_step=5)
+        hyper_parameters = HyperParameters(
+            gradient_step_size=1e-3,
+            num_guesses=1,  # all the parameters above
+            epoch_length=1000)
+        traces = []
+        for seed in range(2):
+            trace, states = t_model.generate_trace(4, seed, 1000)
+            traces.append(trace)
+        traces = jnp.array(traces)
+        ys, parameters, likelihoods = fit.most_likely_ys(
+            traces,
+            y_low=2,
+            y_high=6,
+            parameter_ranges=parameter_ranges,
+            hyper_parameters=hyper_parameters)
+        result = ys == jnp.asarray([4, 4])
 
-        self.assertTrue(np.argmax(likelihoods) == 2)
+        self.assertTrue(result.all())
 
         return
 
