@@ -182,7 +182,7 @@ def fit_traces(
             p,
             os,
             optimizer,
-            hyper_parameters.epoch_length),
+            hyper_parameters),
         in_axes=(None, 0, 0))
     # vmap over traces
     vmap_traces = jax.vmap(vmap_parameters, in_axes=(0, 0, 0))
@@ -230,7 +230,7 @@ def fit_trace(
         parameters,
         optimizer_state,
         optimizer,
-        num_iterations):
+        hyperparameters):
     """Fit a single trace and parameter pair, using the given optimizer.
 
     Returns:
@@ -254,15 +254,15 @@ def fit_trace(
         step,
         (parameters, optimizer_state),  # carry init
         [],  # x to scan over (nothing in our case)
-        length=num_iterations)  # number of scan steps
+        length=hyperparameters.epoch_length)  # number of scan steps
 
     # mark as done if the most recent likelihoods do not differ by a lot
-    is_done = _is_done(likelihoods)
+    is_done = _is_done(likelihoods, hyperparameters.is_done_limit)
 
     return parameters, optimizer_state, likelihoods[-1], is_done
 
 
-def _is_done(likelihoods):
+def _is_done(likelihoods, limit):
     '''
     Input: an array of likelihoods shape epoch_length
 
@@ -279,7 +279,7 @@ def _is_done(likelihoods):
     percent_improve = jnp.divide(mean_improvements, mean_values)
 
     # FIXME: pass cutoff as a hyper_parameters
-    is_done = percent_improve < 1e-7
+    is_done = percent_improve < limit
 
     return is_done
 
