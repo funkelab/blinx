@@ -211,7 +211,7 @@ def fit_traces(
 
     # for each trace, keep the best parameter/likelihood
 
-    best_guesses = jnp.argmax(likelihoods, axis=1)
+    best_guesses = jnp.argmin(likelihoods, axis=1)
 
     best_parameters = jnp.array([
         parameters[t, i]
