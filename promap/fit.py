@@ -257,12 +257,31 @@ def fit_trace(
         length=num_iterations)  # number of scan steps
 
     # mark as done if the most recent likelihoods do not differ by a lot
-
-    # FIXME: pull out into separate function, implement more robust stopping
-    # criterion (relative change over last n iterations)
-    is_done = jnp.abs(likelihoods[-1] - likelihoods[-2]) < 1e-4
+    is_done = _is_done(likelihoods)
 
     return parameters, optimizer_state, likelihoods[-1], is_done
+
+
+def _is_done(likelihoods):
+    '''
+    Input: an array of likelihoods shape epoch_length
+
+    output: bool
+    '''
+
+    # option_1
+    # measures average percent change over last few cycles
+
+    most_recent = likelihoods[-10:]
+    mean_values = jnp.mean(most_recent)
+    mean_improvements = jnp.mean(jnp.diff(most_recent))
+
+    percent_improve = jnp.divide(mean_improvements, mean_values)
+
+    # FIXME: pass cutoff as a hyper_parameters
+    is_done = percent_improve < 1e-7
+
+    return is_done
 
 
 def get_initial_guesses(y, trace, parameter_ranges, num_guesses):
