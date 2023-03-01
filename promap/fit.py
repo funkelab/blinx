@@ -83,7 +83,7 @@ def most_likely_ys(
     all_parameters = jnp.array(all_parameters)
     all_likelihoods = jnp.array(all_likelihoods)
 
-    most_likely_ys = jnp.argmax(all_likelihoods, axis=1) + y_low
+    most_likely_ys = jnp.argmin(all_likelihoods, axis=0) + y_low
 
     return most_likely_ys, all_parameters, all_likelihoods
 
@@ -182,7 +182,7 @@ def fit_traces(
             p,
             os,
             optimizer,
-            hyper_parameters.epoch_length),
+            hyper_parameters),
         in_axes=(None, 0, 0))
     # vmap over traces
     vmap_traces = jax.vmap(vmap_parameters, in_axes=(0, 0, 0))
@@ -211,7 +211,7 @@ def fit_traces(
 
     # for each trace, keep the best parameter/likelihood
 
-    best_guesses = jnp.argmax(likelihoods, axis=1)
+    best_guesses = jnp.argmin(likelihoods, axis=1)
 
     best_parameters = jnp.array([
         parameters[t, i]
@@ -230,7 +230,7 @@ def fit_trace(
         parameters,
         optimizer_state,
         optimizer,
-        num_iterations):
+        hyperparameters):
     """Fit a single trace and parameter pair, using the given optimizer.
 
     Returns:
@@ -254,21 +254,111 @@ def fit_trace(
         step,
         (parameters, optimizer_state),  # carry init
         [],  # x to scan over (nothing in our case)
-        length=num_iterations)  # number of scan steps
+        length=hyperparameters.epoch_length)  # number of scan steps
 
     # mark as done if the most recent likelihoods do not differ by a lot
-
-    is_done = jnp.abs(likelihoods[-1] - likelihoods[-2]) < 1e-4
+    is_done = _is_done(likelihoods, hyperparameters.is_done_limit)
 
     return parameters, optimizer_state, likelihoods[-1], is_done
 
 
+def _is_done(likelihoods, limit):
+    '''
+    Input: an array of likelihoods shape epoch_length
+
+    output: bool
+    '''
+
+    # option_1
+    # measures average percent change over last few cycles
+
+    most_recent = likelihoods[-10:]
+    mean_values = jnp.mean(most_recent)
+    mean_improvements = jnp.mean(jnp.diff(most_recent))
+
+    percent_improve = jnp.divide(mean_improvements, mean_values)
+
+    # FIXME: pass cutoff as a hyper_parameters
+    is_done = percent_improve < limit
+
+    return is_done
+
+
 def get_initial_guesses(y, trace, parameter_ranges, num_guesses):
 
-    # TODO: this is just a dummy implementation that simply returns the first
-    # num_guesses parameters
+    '''
+    Find rough estimates of the parameters to fit a given trace
 
-    return parameter_ranges.to_tensor()[:num_guesses]
+    Returns: array of parameters of size 5 x num guesses
+
+    '''
+    parameters = parameter_ranges.to_tensor()
+
+    # calculate likelihood for each combination of parameters
+    likelihoods = jax.vmap(get_likelihood, in_axes=(None, None, 0))(
+        y,
+        trace,
+        parameters)
+
+    # reshape parameters and likelihoods so they are "continuous"
+    # along each dimension
+    parameters = parameters.reshape(
+        parameter_ranges.num_values() +
+        (len(parameter_ranges.num_values()),)
+    )
+    results = likelihoods.reshape(
+        parameter_ranges.num_values())
+
+    # find locations where parameters minimize likelihoods
+    min_c = _find_minima_nd(results, num_guesses)
+
+    return parameters[min_c[:, 0], min_c[:, 1], min_c[:, 2], min_c[:, 3],
+                      min_c[:, 4]]
+
+
+def _minima_point(index, b, a):
+    # Given a coordinate, finds the nearest neighbors and determines if given
+    # coordinate is a local minima
+    centered = b - b[index]
+    dist = jnp.linalg.norm(centered, axis=1)
+    c = jnp.where(dist <= 1, size=len(a.shape*2)+1)
+    tile = b[c]
+    tile_values = a[tile[:, 0], tile[:, 1]]
+    all_same = jnp.all(tile_values == tile_values[0])
+    result = jax.lax.cond(all_same, lambda: 0., lambda: jnp.min(tile_values))
+    return result
+
+
+def _find_minima_nd(matrix, num_minima):
+    '''
+    Find local minima of an N dimensional matrix
+    - finds nearest neighbors of each point
+    - compares neighbors to determine if point is a minima
+
+    Returns:
+        a 5 x num_minima array containing the coordinates of the found
+        local minima
+    '''
+
+    # FIXME: has to be a way to avoid hard coding this
+    # but not the worst because input params will always be 5d
+    shape = matrix.shape
+    dim_1 = np.arange(shape[0])
+    dim_2 = np.arange(shape[1])
+    dim_3 = np.arange(shape[2])
+    dim_4 = np.arange(shape[3])
+    dim_5 = np.arange(shape[4])
+
+    b = jnp.asarray(np.meshgrid(
+        dim_1, dim_2, dim_3, dim_4, dim_5
+        )).reshape((matrix.ndim, np.product(matrix.shape))).T
+
+    indices = jnp.arange(np.product(matrix.shape))
+    d = jax.vmap(_minima_point, in_axes=(0, None, None))(indices, b, matrix)
+
+    e = matrix.reshape(np.product(matrix.shape))
+
+    return b[jnp.where(d == e, size=num_minima)]
 
 
 def get_likelihood(y, trace, parameters):
@@ -312,6 +402,7 @@ def get_likelihood(y, trace, parameters):
         p_initial)
 
     # need to flip to positive value for grad descent
+    # FIXME: invert gradients in optimizer instead
     return -1 * likelihood
 
 # ---------------------------------------------------------------
