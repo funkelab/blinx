@@ -10,6 +10,10 @@ def create_optimizer(value_grad_func, hyper_parameters):
     optimizer = optax.adam(
         learning_rate=hyper_parameters.gradient_step_size,
         mu_dtype='uint64')  # TODO: is that still needed?
+    
+    optimizer_mu = optax.adam(
+        learning_rate=hyper_parameters.mu_gradient_step_size,
+        mu_dtype='uint64')  # TODO: is that still needed?
 
     def init(parameters):
 
