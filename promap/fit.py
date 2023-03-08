@@ -202,6 +202,8 @@ def fit_traces(
                 parameters,
                 optimizer_states)
 
+        print(f'fitting y = {y}')
+
         print("likelihoods:")
         print(likelihoods)
 
