@@ -16,28 +16,36 @@ def create_optimizer(value_grad_func, hyper_parameters):
         param_labels)
 
     def init(parameters):
+        # parameters must be in tuple form so that labels defined above apply
         params = (parameters[PARAM_MU], parameters[1:])
+
         return optimizer.init(params)
 
     def step(trace, parameters, opt_state):
+
+        # split parameters into tuple form so that labels apply
         params = (parameters[PARAM_MU], parameters[1:])
+
         # get value and gradient
 
         value, gradients = value_grad_func(trace, parameters)
 
+        # gradients must also be in same tuple form
         grads = (gradients[PARAM_MU], gradients[1:])
-        # compute updates from gradients
 
+        # compute updates from gradients
         updates, opt_state = optimizer.update(
             grads,
             opt_state)
 
         # update parameters
-
         params = optax.apply_updates(params, updates)
 
-        # return updated parameters, current value, and optimizer state
+        # re-stack parametes into a jax-array
         parameters = jnp.hstack((params[0], params[1]))
+
+        # return updated parameters, current value, and optimizer state
+
         return parameters, value, opt_state
 
     return Optimizer(init, step)
