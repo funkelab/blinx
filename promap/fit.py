@@ -279,8 +279,11 @@ def _is_done(likelihoods, limit):
 
     percent_improve = jnp.divide(mean_improvements, mean_values)
 
-    # FIXME: pass cutoff as a hyper_parameters
-    is_done = percent_improve < limit
+    done_improve = percent_improve < limit
+
+    # Check if nan and return true if so
+    is_nan = jnp.isnan(percent_improve)
+    is_done = jnp.logical_or(done_improve, is_nan)
 
     return is_done
 
