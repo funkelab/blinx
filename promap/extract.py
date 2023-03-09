@@ -119,3 +119,4 @@ def array_list(image, xs, ys, pixels):
             y_list.append(ys + y)
 
     return x_list, y_list
+
