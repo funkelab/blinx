@@ -5,7 +5,6 @@ from .constants import (
     PARAM_SIGMA,
     PARAM_P_ON,
     PARAM_P_OFF)
-from .constants import P_ON, P_OFF, MU, SIGMA
 from .fluorescence_model import FluorescenceModel
 from .hyper_parameters import HyperParameters
 from .optimizer import create_optimizer
@@ -381,7 +380,7 @@ def get_likelihood(y, trace, parameters):
 
     fluorescence_model = FluorescenceModel(
         mu_i=mu,
-        sigma_i=sigma,
+        sigma=sigma,
         mu_b=mu_bg)
     t_model = TraceModel(fluorescence_model)
 
