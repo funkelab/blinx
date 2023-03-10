@@ -12,17 +12,11 @@ class FluorescenceModel:
         mu_i:
             the mean intensity of a bound fluorophore
 
-        sigma_i:
+        sigma:
             the standard deviation of the intensity of a bound fluorophore
 
         mu_b:
             the mean intensity of the background
-
-        sigma_b:
-            the standard deviation of the intensity of the background
-
-        label_eff:
-            the labeling efficiency of y
 
         num_bins (``int``):
 
@@ -42,23 +36,16 @@ class FluorescenceModel:
 
     def __init__(self,
                  mu_i=1,
-                 sigma_i=0.1,
+                 sigma=0.1,
                  mu_b=1,
-                 sigma_b=0.1,
-                 label_eff=1,
                  num_bins=1024,
                  p_outlier=1e-3,
                  distribution='lognormal'):
 
         self.mu_i = mu_i
-        self.sigma_i = sigma_i
-        self.sigma_i2 = sigma_i**2
+        self.sigma = sigma
         self.mu_b = mu_b
-        self.sigma_b = sigma_b
-        self.sigma_b2 = sigma_b**2
-        self.label_eff = label_eff
         self.distribution = distribution
-
         self.num_bins = num_bins
         self.p_outlier = p_outlier
 
@@ -135,7 +122,7 @@ class FluorescenceModel:
         mean = jnp.log(self.mu_i * z + self.mu_b)
 
         std_value = random.normal(key, z.shape)
-        value = (std_value * self.sigma_i) + mean
+        value = (std_value * self.sigma) + mean
 
         return jnp.exp(value)
 
@@ -155,11 +142,11 @@ class FluorescenceModel:
         prob_1 = jax.scipy.stats.norm.cdf(
             x_left,
             loc=mean,
-            scale=self.sigma_i)
+            scale=self.sigma)
         prob_2 = jax.scipy.stats.norm.cdf(
             x_right,
             loc=mean,
-            scale=self.sigma_i)
+            scale=self.sigma)
 
         prob = jnp.abs(prob_1 - prob_2)
 
@@ -178,11 +165,11 @@ class FluorescenceModel:
         prob_1 = jax.scipy.stats.norm.cdf(
             log_x_left,
             loc=mean,
-            scale=self.sigma_i)
+            scale=self.sigma)
         prob_2 = jax.scipy.stats.norm.cdf(
             log_x_right,
             loc=mean,
-            scale=self.sigma_i)
+            scale=self.sigma)
 
         prob = jnp.abs(prob_1 - prob_2)
 

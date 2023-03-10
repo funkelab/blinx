@@ -380,7 +380,7 @@ def get_likelihood(y, trace, parameters):
 
     fluorescence_model = FluorescenceModel(
         mu_i=mu,
-        sigma_i=sigma,
+        sigma=sigma,
         mu_b=mu_bg)
     t_model = TraceModel(fluorescence_model)
 
