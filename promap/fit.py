@@ -5,7 +5,6 @@ from .constants import (
     PARAM_SIGMA,
     PARAM_P_ON,
     PARAM_P_OFF)
-from .constants import P_ON, P_OFF, MU, SIGMA
 from .fluorescence_model import FluorescenceModel
 from .hyper_parameters import HyperParameters
 from .optimizer import create_optimizer
