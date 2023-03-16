@@ -17,21 +17,21 @@ def create_optimizer(value_grad_func, hyper_parameters):
 
     def init(parameters):
         # parameters must be in tuple form so that labels defined above apply
-        params = (parameters[PARAM_MU], parameters[1:])
+        params = (parameters[:2], parameters[2:])
 
         return optimizer.init(params)
 
     def step(trace, parameters, opt_state):
 
         # split parameters into tuple form so that labels apply
-        params = (parameters[PARAM_MU], parameters[1:])
+        params = (parameters[:2], parameters[2:])
 
         # get value and gradient
 
         value, gradients = value_grad_func(trace, parameters)
 
         # gradients must also be in same tuple form
-        grads = (gradients[PARAM_MU], gradients[1:])
+        grads = (gradients[:2], gradients[2:])
 
         # compute updates from gradients
         updates, opt_state = optimizer.update(
