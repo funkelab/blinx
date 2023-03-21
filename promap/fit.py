@@ -10,6 +10,7 @@ from .hyper_parameters import HyperParameters
 from .optimizer import create_optimizer
 from .parameter_ranges import ParameterRanges
 from .trace_model import TraceModel
+from .post_process import post_process
 from jax import lax
 import jax
 import jax.numpy as jnp
@@ -21,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 def most_likely_ys(
         traces,
-        y_low,
         y_high,
         parameter_ranges=None,
         hyper_parameters=None):
@@ -67,7 +67,7 @@ def most_likely_ys(
 
     all_parameters = []
     all_likelihoods = []
-    for y in range(y_low, y_high + 1):
+    for y in range(hyper_parameters.y_low, y_high + 1):
 
         parameters, likelihoods = fit_traces(
             y,
@@ -81,7 +81,11 @@ def most_likely_ys(
     all_parameters = jnp.array(all_parameters)
     all_likelihoods = jnp.array(all_likelihoods)
 
-    most_likely_ys = jnp.argmin(all_likelihoods, axis=0) + y_low
+    most_likely_ys, _ = post_process(
+        traces=traces,
+        parameters=all_parameters,
+        likelihoods=all_likelihoods,
+        hyper_parameters=hyper_parameters)
 
     return most_likely_ys, all_parameters, all_likelihoods
 
