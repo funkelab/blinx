@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 def most_likely_ys(
         traces,
-        y_low,
         y_high,
         parameter_ranges=None,
         hyper_parameters=None):
@@ -68,7 +67,7 @@ def most_likely_ys(
 
     all_parameters = []
     all_likelihoods = []
-    for y in range(y_low, y_high + 1):
+    for y in range(hyper_parameters.y_low, y_high + 1):
 
         parameters, likelihoods = fit_traces(
             y,
