@@ -73,7 +73,7 @@ def _viterbi(traces, params, y_low):
     vit_dists = np.zeros((
         params.shape[0],
         params.shape[1],
-        params.shape[0] + 1))
+        params.shape[0] + y_low))
     for i, y in enumerate(range(y_low, y_low+params.shape[0])):
         for t in range(traces.shape[0]):
             f_model = FluorescenceModel(
@@ -89,7 +89,7 @@ def _viterbi(traces, params, y_low):
             vit_dists[i, t, :], _ = np.histogram(
                 vit_trace,
                 density=True,
-                bins=range(params.shape[0] + 2))
+                bins=range(params.shape[0] + 1 + y_low))
 
             viterbi_traces[i, t, :] = vit_trace
 
@@ -103,7 +103,9 @@ def _steady_state(parameters, y_low):
     ss_dists = np.zeros((
         parameters.shape[0],
         parameters.shape[1],
-        parameters.shape[0]+1))
+        parameters.shape[0]+y_low))
+    print(f'parameters: {parameters.shape}')
+    print(f'ss_dists: {ss_dists.shape}')
     for i, y in enumerate(range(y_low, y_low+parameters.shape[0])):
         for t in range(parameters.shape[1]):
             trans_matrix = transition_matrix.create_transition_matrix(
