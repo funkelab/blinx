@@ -31,39 +31,40 @@ def post_process(
     proc_likelihoods = likelihoods.at[jnp.isnan(likelihoods)].set(sub_value)
 
     # comapre differences in distributions
-    dist_diffs = compare_dists(traces, parameters, y_low)
+    dist_diffs = _compare_dists(traces, parameters, hyper_parameters)
     likes_to_remove = dist_diffs > hyper_parameters.distribution_threshold
 
     proc_likelihoods = proc_likelihoods.at[likes_to_remove].set(sub_value)
 
-    # Add other post_processing here
-
     # find new most likely y values
-    most_likely_ys = jnp.argmin(proc_likelihoods, axis=0) + y_low
+    most_likely_ys = jnp.argmin(proc_likelihoods, axis=0) + \
+        hyper_parameters.y_low
 
     return most_likely_ys, proc_likelihoods
 
 
-def compare_dists(
+def _compare_dists(
         traces,
         parameters,
-        y_low):
+        hyper_parameters):
+    # find the KL divergence between the measured viterbi distribution and the
+    # theoretical distribution
 
-    viterbi_traces, viterbi_dist = viterbi(traces, y_low, parameters)
-    steady_state_dist = steady_state(parameters, y_low)
+    viterbi_traces, viterbi_dist = _viterbi(
+        traces,
+        parameters,
+        hyper_parameters.y_low)
 
-    diffs = np.abs(viterbi_dist - steady_state_dist)
+    steady_state_dist = _steady_state(parameters, hyper_parameters.y_low)
 
-    dist_differences = np.sum(diffs, axis=2)
+    kl = entropy(viterbi_dist, steady_state_dist, axis=2)
 
-    return dist_differences
+    return kl
 
 
-def viterbi(traces, params, y_low):
-    '''
-    inputs: traces, paramters, ys_tested
-    returns: viterbi traces in same shape of traces
-    '''
+def _viterbi(traces, params, y_low):
+    # Use viterbi algorithm to fit traces to given parameters
+    # return viterbi trace and distribution of states
 
     viterbi_traces = np.zeros((
         params.shape[0],
