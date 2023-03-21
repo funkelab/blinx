@@ -10,6 +10,7 @@ from .hyper_parameters import HyperParameters
 from .optimizer import create_optimizer
 from .parameter_ranges import ParameterRanges
 from .trace_model import TraceModel
+from .post_process import post_process
 from jax import lax
 import jax
 import jax.numpy as jnp
@@ -81,7 +82,11 @@ def most_likely_ys(
     all_parameters = jnp.array(all_parameters)
     all_likelihoods = jnp.array(all_likelihoods)
 
-    most_likely_ys = jnp.argmin(all_likelihoods, axis=0) + y_low
+    most_likely_ys, _ = post_process(
+        traces=traces,
+        parameters=all_parameters,
+        likelihoods=all_likelihoods,
+        hyper_parameters=hyper_parameters)
 
     return most_likely_ys, all_parameters, all_likelihoods
 

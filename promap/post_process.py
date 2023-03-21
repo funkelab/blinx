@@ -9,19 +9,19 @@ from promap.fluorescence_model import FluorescenceModel
 from promap.trace_model import TraceModel
 from promap import transition_matrix
 import jax.numpy as jnp
+from scipy.stats import entropy
 
 
 def post_process(
         traces,
         parameters,
         likelihoods,
-        y_low,
         hyper_parameters):
     '''
     Big wrapper function that combines all post processing steps and returns
     the best y guess for each trace
 
-    Inputs: likelihoods, parameters, traces, ys_tested
+    Inputs: traces, parameters, likelihoods, hyper_parameters
 
     '''
     # find max likelihood and use it as value to replace bad values with
@@ -95,7 +95,10 @@ def viterbi(traces, params, y_low):
     return viterbi_traces, vit_dists
 
 
-def steady_state(parameters, y_low):
+def _steady_state(parameters, y_low):
+    # theoretical steady state distribution of states for given parameters
+    # calc using forward model of HMM
+
     ss_dists = np.zeros((
         parameters.shape[0],
         parameters.shape[1],

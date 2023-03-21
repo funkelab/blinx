@@ -22,13 +22,15 @@ class HyperParameters:
 
     def __init__(
             self,
+            y_low=1,
             gradient_step_size=1e-3,
             num_guesses=5,
             epoch_length=1000,
             is_done_limit=1e-5,
             mu_gradient_step_size=1e-3,
-            distribution_threshold=2e-1):
+            distribution_threshold=1e-1):
 
+        self.y_low = y_low
         self.gradient_step_size = gradient_step_size
         self.num_guesses = num_guesses
         self.epoch_length = epoch_length
