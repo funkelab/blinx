@@ -10,6 +10,7 @@ from promap.trace_model import TraceModel
 from promap import transition_matrix
 import jax.numpy as jnp
 from scipy.stats import entropy
+from jax import vmap
 
 
 def post_process(

@@ -1,4 +1,3 @@
-import numpy as np
 from promap import transition_matrix
 from jax import lax
 import jax.numpy as jnp
@@ -140,28 +139,40 @@ class TraceModel:
             self.p_off)
         p_init = transition_matrix.p_initial(y, trans_m)
 
-        num_states = trans_m.shape[0]
-        num_obs = len(trace)  # length of observed sequence
-        tiny = np.finfo(0.).tiny
-        trans_m_log = np.log(trans_m + tiny)
-        p_init_log = np.log(p_init + tiny)
-        probs_log = np.log(probs + tiny)
+        tiny = jnp.finfo(0.).tiny
+        trans_m_log = jnp.log(trans_m + tiny)
+        p_init_log = jnp.log(p_init + tiny)
+        probs_log = jnp.log(probs + tiny)
+        init = p_init_log + probs_log[:, 0]
 
-        delta_log = np.zeros((num_states, num_obs))
-        E = np.zeros((num_states, num_obs-1)).astype(np.int32)
-        delta_log[:, 0] = p_init_log + probs_log[:, 0]
+        def bound_scan(carry, x):
+            return self._vit_scan(trans_m_log, carry, x)
 
-        for n in range(1, num_obs):
-            for i in range(num_states):
-                temp_sum = trans_m_log[:, i] + delta_log[:, n-1]
-                delta_log[i, n] = np.max(temp_sum) + probs_log[i, n]
-                E[i, n-1] = np.argmax(temp_sum)
-        s_opt = np.zeros(num_obs).astype(np.int32)
-        s_opt[-1] = np.argmax(delta_log[:, -1])
-        for n in range(num_obs-2, -1, -1):
-            s_opt[n] = E[int(s_opt[n+1]), n]
+        final, result = jax.lax.scan(bound_scan, init, probs_log[:, 1:].T)
 
-        return s_opt
+        E = result[0].T
+
+        def bound_rebuild(carry, x):
+            return self._vit_rebuild_scan(E, carry, x)
+
+        steps = jnp.asarray(list(range(len(trace)-2, -1, -1)))
+        init = jnp.argmax(final)
+
+        a, b = lax.scan(bound_rebuild, init, steps)
+
+        vit_trace = jnp.hstack((jnp.flip(b), jnp.argmax(final)))
+
+        return vit_trace
+
+    def _vit_scan(self, trans_m_log, carry, x):
+        temp_sum = trans_m_log + carry
+        new_carry = jnp.max(temp_sum, axis=1) + x
+        E = jnp.argmax(temp_sum, axis=1)
+        return new_carry, (E, new_carry)
+
+    def _vit_rebuild_scan(self, E, carry, x):
+        new_carry = E[carry, x]
+        return new_carry, new_carry
 
     def _scan_generate(self, old_state, key, transition_m):
         p_tr = jnp.log(transition_m[old_state, :])
