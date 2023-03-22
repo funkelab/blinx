@@ -63,38 +63,42 @@ def _compare_dists(
     return kl
 
 
-def _viterbi(traces, params, y_low):
-    # Use viterbi algorithm to fit traces to given parameters
-    # return viterbi trace and distribution of states
+def viterbi_single_trace(trace, params, y, bins):
+    f_model = FluorescenceModel(
+        mu_i=params[PARAM_MU],
+        mu_b=params[PARAM_MU_BG],
+        sigma=params[PARAM_SIGMA])
+    t_model = TraceModel(
+        f_model,
+        p_on=params[PARAM_P_ON],
+        p_off=params[PARAM_P_OFF])
 
-    viterbi_traces = np.zeros((
-        params.shape[0],
-        traces.shape[0],
-        traces.shape[1]))
-    vit_dists = np.zeros((
-        params.shape[0],
-        params.shape[1],
-        params.shape[0] + y_low))
-    for i, y in enumerate(range(y_low, y_low+params.shape[0])):
-        for t in range(traces.shape[0]):
-            f_model = FluorescenceModel(
-                mu_i=params[i, t, PARAM_MU],
-                mu_b=params[i, t, PARAM_MU_BG],
-                sigma=params[i, t, PARAM_SIGMA])
-            t_model = TraceModel(
-                f_model,
-                p_on=params[i, t, PARAM_P_ON],
-                p_off=params[i, t, PARAM_P_OFF])
+    vit_trace = t_model.viterbi_alg(y, trace)
+    vit_dist = jnp.histogram(
+        vit_trace,
+        density=True,
+        bins=bins)
 
-            vit_trace = t_model.viterbi_alg(y, traces[t, :])
-            vit_dists[i, t, :], _ = np.histogram(
-                vit_trace,
-                density=True,
-                bins=range(params.shape[0] + 1 + y_low))
+    return vit_trace, vit_dist
 
-            viterbi_traces[i, t, :] = vit_trace
 
-    return viterbi_traces, vit_dists
+def _viterbi(traces, parameters, y_low):
+
+    ys = jnp.asarray(range(y_low, y_low+parameters.shape[0]))
+    bins = jnp.asarray(range(parameters.shape[0] + 1 + y_low))
+
+    vit_traces = []
+    vit_dists = []
+    for i in range(parameters.shape[0]):
+        params = parameters[i, :, :]
+        y = ys[i]
+
+        a, b = vmap(viterbi_single_trace, in_axes=(0, 0, None, None))(
+            traces, params, y, bins)
+        vit_traces.append(a)
+        vit_dists.append(b[0])
+
+    return jnp.asarray(vit_traces), jnp.asarray(vit_dists)
 
 
 def _steady_state(parameters, y_low):
@@ -105,8 +109,6 @@ def _steady_state(parameters, y_low):
         parameters.shape[0],
         parameters.shape[1],
         parameters.shape[0]+y_low))
-    print(f'parameters: {parameters.shape}')
-    print(f'ss_dists: {ss_dists.shape}')
     for i, y in enumerate(range(y_low, y_low+parameters.shape[0])):
         for t in range(parameters.shape[1]):
             trans_matrix = transition_matrix.create_transition_matrix(
