@@ -8,7 +8,8 @@ def extract_trace(image_file_path,
                   pick_file_path,
                   drift_file_path,
                   spot_num,
-                  pixels=0):
+                  pixels=0,
+                  all_spots=False):
     '''
     Extracts an intensity trace from a DNA-PAINT movie
 
@@ -27,12 +28,18 @@ def extract_trace(image_file_path,
                 of the tiff movie
             - generated as an output of picasso localize, running undrift RCC,
                 or undrift from picks
-        
+
+        spot_num (int):
+            - the group number of the localizations to extract a trace from
+
         pixels (int):
             - the radius of a grid around the center pixel to include in the
                 intensity value measurement for each frame
             - ex. pixels = 1 measures a 3x3 grid, and sums all 9 values to get
                 the intensity measurement for each frame
+
+        all_spots (bool):
+            - if True extracts a trace from every detected spot in the image
 
     Returns:
         trace (1D array):
@@ -44,7 +51,20 @@ def extract_trace(image_file_path,
     picked_spots = _read_hdf5(pick_file_path)
     drift = pd.read_csv(drift_file_path, sep=' ')
 
-    # pick a single spot, can alter to return list of traces for multiple spots
+    if all_spots is True:
+        num_spots = picked_spots['group'].max()
+        trace = np.zeros((image.shape[2], num_spots))
+        for i in range(num_spots):
+            trace[:, i] = _single_spot(image, picked_spots, drift, i, pixels)
+
+    else:
+        trace = _single_spot(image, picked_spots, drift, spot_num, pixels)
+
+    return trace
+
+
+def _single_spot(image, picked_spots, drift, spot_num, pixels):
+
     single_spot = picked_spots[picked_spots['group'] == spot_num]
 
     single_spot_array = np.asarray(single_spot)
@@ -66,12 +86,10 @@ def extract_trace(image_file_path,
                    undrifted_cords[:, 2]).astype(int)
 
     # extract intensity of drfiting structure for all frames
-    # TODO: - measure more than single pixel area?
-    #       - integrate and convert to photon count?
     x_list, y_list = array_list(image, xs, ys, pixels)
-    
+
     image_crop = image[y_list, x_list, total_frames]
-    
+
     trace = np.sum(image_crop, axis=0)
 
     return trace
@@ -99,14 +117,6 @@ def array_list(image, xs, ys, pixels):
         for y in range(-pixels, pixels+1):
             x_list.append(xs + x)
             y_list.append(ys + y)
-    
+
     return x_list, y_list
 
-
-if __name__ == '__main__':
-    image_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1.tif'
-    pick_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_picked.hdf5'
-    drift_file_path = '../../Images/Picasso_practice/w1-02_Pm2-8nt-5nM_p4pc-8nd_exp400_tirf2020-1_locs_221014_110734_drift.txt'
-
-    trace = extract_trace(image_file_path, pick_file_path, drift_file_path,
-                          spot_num=9, pixels=2)

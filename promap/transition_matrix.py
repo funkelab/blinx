@@ -1,26 +1,28 @@
 import jax
 import jax.numpy as jnp
 from scipy.special import comb
- 
-def create_transition_matrix(y,
-    p_on,
-    p_off,
-    comb_matrix=None,
-    comb_matrix_slanted=None):
+
+
+def create_transition_matrix(
+        y,
+        p_on,
+        p_off,
+        comb_matrix=None,
+        comb_matrix_slanted=None):
     '''Create a transition matrix for the number of active elements, given that
     elements can randomly turn on and off.
-    
+
     Args:
-    
+
         y (int):
             The maximum number of elements that can be on.
-    
+
         p_on (float):
             The probability for a single element to turn on (if off).
-    
+
         p_off (float):
             The probability for a single element to turn off (if on).
-    
+
         comb_matrix (array, optional):
         comb_matrix_slanted (array, optional):
             Precomputed combinatorial matrices, containing the counts of
@@ -29,39 +31,53 @@ def create_transition_matrix(y,
             However, since the values in those matrices do not depend on
             ``p_on`` and ``p_off`, it will be more efficient to precompute
             those matrices and pass them here::
-    
+
                 comb_matrix = create_comb_matrix(y)
                 comb_matrix_slanted = create_comb_matrix(y, slanted=True)
-    
+
     Returns:
-    
+
         A matrix of transition probabilities of shape ``(y + 1, y + 1)``, with
         element ``i, j`` being the probability that the number of active
         elements changes from ``i`` to ``j``.
     '''
-    
+
     p_on = jnp.float32(p_on)
     p_off = jnp.float32(p_off)
     if comb_matrix is None:
-         comb_matrix = _create_comb_matrix(y)
+        comb_matrix = _create_comb_matrix(y)
     if comb_matrix_slanted is None:
-         comb_matrix_slanted = _create_comb_matrix(y, slanted=True)
-    
+        comb_matrix_slanted = _create_comb_matrix(y, slanted=True)
+
     max_y = comb_matrix.shape[0] - 1
-    
+
     prob_matrix_on = _create_prob_matrix(y, jnp.float32(p_on), slanted=True)
     prob_matrix_off = _create_prob_matrix(y, jnp.float32(p_off))
-    
+
     t_on_matrix = comb_matrix_slanted * prob_matrix_on
     t_off_matrix = comb_matrix * prob_matrix_off
-    
+
     def correlate(t_on_matrix, t_off_matrix):
         return jax.vmap(
             lambda a, b: jnp.correlate(a, b, mode='valid')
         )(t_on_matrix[::-1], t_off_matrix)
-    
+
     return correlate(t_on_matrix[:y + 1, max_y - y:], t_off_matrix[:y + 1])
-    
+
+
+def p_initial(y, trans_m):
+    c_state = jnp.ones(y+1) / (y+1)
+
+    def lax_unit(initial_prob, xs):
+        state = jnp.matmul(initial_prob, trans_m)
+        return state, state
+
+    xs = jnp.arange(100)
+    final, result = jax.lax.scan(lax_unit, c_state, xs)
+
+    return final
+
+
 def _create_comb_matrix(y, slanted=False):
     '''Creates a matrix of n-choose-k values.
 
@@ -98,7 +114,8 @@ def _create_comb_matrix(y, slanted=False):
             [comb(i, j) for j in range(end_j)]
             for i in range(end_i)
         ])
-        
+
+
 def _create_prob_matrix(y, p, slanted=False):
     '''Creates a matrix of probabilities for flipping ``i`` out of ``j``
     elements, given that the probability for a single flip is ``p``.

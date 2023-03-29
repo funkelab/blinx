@@ -1,8 +1,5 @@
 import numpy as np
 import unittest
-import pandas as pd
-from promap.trace_model import TraceModel
-from promap.fluorescence_model import EmissionParams
 from promap import transition_matrix
 import jax.numpy as jnp
 from scipy import stats
