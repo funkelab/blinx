@@ -139,13 +139,19 @@ def fit_traces(
 
     # get initial guesses for each trace, given the parameter ranges
 
-    parameter_guesses = jax.vmap(
-        get_initial_guesses,
-        in_axes=(None, 0, None, None))(
-            y,
-            traces,
-            parameter_ranges,
-            hyper_parameters.num_guesses)
+    def trace_p(trace):
+        return get_initial_guesses(y, trace, parameter_ranges,
+                                    num_guesses=hyper_parameters.num_guesses)
+    parameter_guesses = jax.lax.map(
+        trace_p, traces)
+
+    # parameter_guesses = jax.vmap(
+    #     get_initial_guesses,
+    #     in_axes=(None, 0, None, None))(
+    #         y,
+    #         traces,
+    #         parameter_ranges,
+    #         hyper_parameters.num_guesses)
 
     num_traces = parameter_guesses.shape[0]
     num_guesses = parameter_guesses.shape[1]
@@ -317,15 +323,16 @@ def get_initial_guesses(y, trace, parameter_ranges, num_guesses):
         parameter_ranges.num_values())
 
     # find locations where parameters minimize likelihoods
-    # min_c = _find_minima_nd(results, num_guesses)
+    min_c = _find_minima_nd(results, num_guesses)
 
-    min_c = jnp.unravel_index(jnp.argmin(results), results.shape)
+    # min_c = jnp.unravel_index(jnp.argmin(results), results.shape)
 
-    # return parameters[min_c[:, 0], min_c[:, 1], min_c[:, 2], min_c[:, 3],
-    #                   min_c[:, 4]]
-    return jnp.expand_dims(
-        parameters[min_c[0], min_c[1], min_c[2], min_c[3], min_c[4],:],
-        axis=0)
+    return parameters[min_c[:, 0], min_c[:, 1], min_c[:, 2], min_c[:, 3],
+                      min_c[:, 4]]
+    # return jnp.expand_dims(
+    #     parameters[min_c[0], min_c[1], min_c[2], min_c[3], min_c[4],:],
+    #     axis=0)
+
 
 def _minima_point(index, b, a):
     # Given a coordinate, finds the nearest neighbors and determines if given
