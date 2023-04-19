@@ -98,10 +98,11 @@ class TraceModel:
 
         return x_trace[100:, 0], states[100:]
 
-    def get_likelihood(self, probs, transition_m, p_init):
+    def get_likelihood(self, y, trace, transition_m, p_init):
         '''
         TODO: add a docstring
         '''
+        probs = self.fluorescence_model.p_x_given_zs(trace, y)
         initial_values = p_init[:] * probs[:, 0]
         scale_factor_initial = 1 / jnp.sum(initial_values)
         initial_values = initial_values * scale_factor_initial
