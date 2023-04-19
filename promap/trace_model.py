@@ -117,6 +117,26 @@ class TraceModel:
 
         return -1*(jnp.sum(jnp.log(result)))
 
+    def get_likelihood_discrete(self, trace, p_emission_lookup, transition_m, p_init):
+        '''
+        TODO: add a docstring
+        '''
+        initial_values = p_init[:] * p_emission_lookup[:, trace[0]]
+        scale_factor_initial = 1 / jnp.sum(initial_values)
+        initial_values = initial_values * scale_factor_initial
+        p_transition = transition_m
+
+        def scan_f_2(p_accumulate, trace):
+            return self._scan_likelihood_discrete(
+                p_accumulate,
+                trace,
+                p_emission_lookup,
+                p_transition)
+
+        final, result = lax.scan(scan_f_2, initial_values, trace)
+
+        return -1*(jnp.sum(jnp.log(result)))
+
     def viterbi_alg(self, y, trace):
         '''
         Find the most likely state for each frame of the trace
@@ -201,6 +221,27 @@ class TraceModel:
 
         '''
         temp = p_emission * jnp.matmul(p_accumulate, p_transition)
+        scale_factor = 1 / jnp.sum(temp)
+        prob_time_t = temp * scale_factor
+
+        return prob_time_t, scale_factor
+
+    def _scan_likelihood_discrete(self, p_accumulate, x_value, p_emission_lookup, p_transition):
+        '''
+        p_accu:
+            - accumulated probability from t=0 to t-1
+            - vector shape (1 x Y)
+
+        p_emission_lookup:
+            - probability of observing X given state z
+            - precalculated and stored in a array shape (y x max_x)
+
+        p_transtion:
+            - probability of transitioning from state z(t-1) to state z(t)
+            - precalculated and stored in an array shape (y x y)
+
+        '''
+        temp = p_emission_lookup[:, x_value] * jnp.matmul(p_accumulate, p_transition)
         scale_factor = 1 / jnp.sum(temp)
         prob_time_t = temp * scale_factor
 

@@ -141,7 +141,7 @@ def fit_traces(
 
     def trace_p(trace):
         return get_initial_guesses(y, trace, parameter_ranges,
-                                    num_guesses=hyper_parameters.num_guesses)
+                                    hyper_parameters)
     parameter_guesses = jax.lax.map(
         trace_p, traces)
 
@@ -160,7 +160,7 @@ def fit_traces(
     # function
 
     likelihood_grad_func = jax.value_and_grad(
-        lambda t, p: get_likelihood(y, t, p),
+        lambda t, p: get_likelihood(y, t, p, hyper_parameters),
         argnums=1)
 
     # create an optimizer, which will be shared between all optimizations
@@ -297,7 +297,7 @@ def _is_done(likelihoods, limit):
     return is_done
 
 
-def get_initial_guesses(y, trace, parameter_ranges, num_guesses):
+def get_initial_guesses(y, trace, parameter_ranges, hyper_parameters):
 
     '''
     Find rough estimates of the parameters to fit a given trace
@@ -305,13 +305,16 @@ def get_initial_guesses(y, trace, parameter_ranges, num_guesses):
     Returns: array of parameters of size 5 x num guesses
 
     '''
+    num_guesses = hyper_parameters.num_guesses
+
     parameters = parameter_ranges.to_tensor()
 
     # calculate likelihood for each combination of parameters
-    likelihoods = jax.vmap(get_likelihood, in_axes=(None, None, 0))(
+    likelihoods = jax.vmap(get_likelihood, in_axes=(None, None, 0, None))(
         y,
         trace,
-        parameters)
+        parameters,
+        hyper_parameters)
 
     # reshape parameters and likelihoods so they are "continuous"
     # along each dimension
@@ -379,7 +382,7 @@ def _find_minima_nd(matrix, num_minima):
     return b[jnp.where(d == e, size=num_minima)]
 
 
-def get_likelihood(y, trace, parameters):
+def get_likelihood(y, trace, parameters, hyper_parameters):
     '''
     Returns the likelihood of a trace given:
         a count (y),
@@ -399,8 +402,6 @@ def get_likelihood(y, trace, parameters):
         mu_b=mu_bg)
     t_model = TraceModel(fluorescence_model)
 
-    probs = t_model.fluorescence_model.p_x_given_zs(trace, y)
-
     comb_matrix = transition_matrix._create_comb_matrix(y)
     comb_matrix_slanted = transition_matrix._create_comb_matrix(
         y,
@@ -414,6 +415,9 @@ def get_likelihood(y, trace, parameters):
 
     transition_mat = c_transition_matrix_2(p_on, p_off)
     p_initial = transition_matrix.p_initial(y, transition_mat)
+
+    probs = t_model.fluorescence_model.p_x_given_zs(trace, y)
+
     likelihood = t_model.get_likelihood(
         probs,
         transition_mat,
