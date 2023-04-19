@@ -98,7 +98,7 @@ class TraceModel:
 
         return x_trace[100:, 0], states[100:]
 
-    def get_likelihood(self, y, trace, transition_m, p_init):
+    def get_likelihood_bla(self, y, trace, transition_m, p_init):
         '''
         TODO: add a docstring
         '''
@@ -118,11 +118,18 @@ class TraceModel:
 
         return -1*(jnp.sum(jnp.log(result)))
 
-    def get_likelihood_discrete(self, trace, p_emission_lookup, transition_m, p_init):
+    def get_likelihood(self, y, trace, transition_m, p_init):
         '''
         TODO: add a docstring
         '''
-        initial_values = p_init[:] * p_emission_lookup[:, trace[0]]
+
+        p_emission_lookup = self.fluorescence_model.p_emission_lookup
+
+        # TODO: this can be done on the outside, doesn't change with emission
+        # parameters
+        trace = self.fluorescence_model.discretize_trace(trace)
+
+        initial_values = p_init[:] * p_emission_lookup[trace[0]]
         scale_factor_initial = 1 / jnp.sum(initial_values)
         initial_values = initial_values * scale_factor_initial
         p_transition = transition_m
@@ -242,7 +249,7 @@ class TraceModel:
             - precalculated and stored in an array shape (y x y)
 
         '''
-        temp = p_emission_lookup[:, x_value] * jnp.matmul(p_accumulate, p_transition)
+        temp = p_emission_lookup[x_value] * jnp.matmul(p_accumulate, p_transition)
         scale_factor = 1 / jnp.sum(temp)
         prob_time_t = temp * scale_factor
 

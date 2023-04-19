@@ -45,10 +45,4 @@ class HyperParameters:
         self.distribution_threshold=distribution_threshold
         self.max_x_value = max_x_value
         self.num_x_bins = num_x_bins
-        if num_x_bins <= 256:
-            self.x_dtype = 'uint8'
-        elif num_x_bins <= 65536:
-            self.x_dtype = 'uint16'
-        else:
-            self.x_dtype = 'uint32'
 

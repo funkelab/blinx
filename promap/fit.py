@@ -63,6 +63,9 @@ def most_likely_ys(
     if hyper_parameters is None:
         hyper_parameters = HyperParameters()
 
+    if hyper_parameters.max_x_value is None:
+        hyper_parameters.max_x_value = traces.max()
+
     # fit model for each y separately
 
     all_parameters = []
@@ -397,6 +400,7 @@ def get_likelihood(y, trace, parameters, hyper_parameters):
     p_off = parameters[PARAM_P_OFF]
 
     fluorescence_model = FluorescenceModel(
+        y=y,
         mu_i=mu,
         sigma=sigma,
         mu_b=mu_bg,

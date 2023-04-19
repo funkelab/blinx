@@ -35,6 +35,7 @@ class FluorescenceModel:
     '''
 
     def __init__(self,
+                 y,
                  mu_i=1,
                  sigma=0.1,
                  mu_b=1,
@@ -43,13 +44,19 @@ class FluorescenceModel:
                  p_outlier=1e-3,
                  distribution='lognormal'):
 
+        assert max_x is not None, \
+            "The maximum intensity value has to be provided"
+
         self.mu_i = mu_i
         self.sigma = sigma
         self.mu_b = mu_b
         self.distribution = distribution
         self.max_x = max_x
         self.num_bins = num_bins
+        self.bin_width = self.max_x / self.num_bins
         self.p_outlier = p_outlier
+
+        self.p_emission_lookup = self._create_p_emission_lookup(y)
 
     def sample_x_z(self, z, key):
         """Draw sample intensity values given a number of bound fluorophores.
@@ -77,6 +84,7 @@ class FluorescenceModel:
             raise RuntimeError(
                 f"Unknown distribution type {self.distribution}")
 
+    # TODO: delete this function
     def p_x_given_zs(self, x, max_z):
         """Compute the probability of observing an intensity value for all
         number of bound fluorophores (``z``) from ``0`` to (including)
@@ -110,6 +118,33 @@ class FluorescenceModel:
             in_axes=(1, None))(x, zs)
 
         return result.T
+
+    def discretize_trace(self, trace):
+        """Convert a float-valued trace into a trace of bin indices, according
+        to the x discretization."""
+
+        if self.num_bins <= 256:
+            x_dtype = 'uint8'
+        elif self.num_bins <= 65536:
+            x_dtype = 'uint16'
+        else:
+            x_dtype = 'uint32'
+
+        return (trace / self.bin_width).astype(x_dtype)
+
+    def _create_p_emission_lookup(self, y):
+
+        intensities = (
+            jnp.arange(0, self.num_bins) * self.bin_width +
+            self.bin_width / 2
+        )
+        zs = jnp.arange(0, y + 1)
+
+        p_emission_lookup = jax.vmap(
+            self._p_x_given_z,
+            in_axes=(0, None))(intensities, zs)
+
+        return p_emission_lookup
 
     def _sample_x_z_poisson(self, z, seed):
         ''' Samples a Poisson random variable '''
