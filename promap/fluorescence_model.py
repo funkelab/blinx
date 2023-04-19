@@ -38,6 +38,7 @@ class FluorescenceModel:
                  mu_i=1,
                  sigma=0.1,
                  mu_b=1,
+                 max_x=None,
                  num_bins=1024,
                  p_outlier=1e-3,
                  distribution='lognormal'):
@@ -46,6 +47,7 @@ class FluorescenceModel:
         self.sigma = sigma
         self.mu_b = mu_b
         self.distribution = distribution
+        self.max_x = max_x
         self.num_bins = num_bins
         self.p_outlier = p_outlier
 
@@ -97,7 +99,8 @@ class FluorescenceModel:
             0, ..., max_z``.
         """
 
-        self.bin_width = x.max() / self.num_bins
+        max_x = x.max() if self.max_x is None else self.max_x
+        self.bin_width = max_x / self.num_bins
 
         zs = jnp.arange(0, max_z + 1)
         x = jnp.expand_dims(x, 0)
