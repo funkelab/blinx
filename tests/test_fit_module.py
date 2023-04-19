@@ -42,11 +42,13 @@ class TestFit(unittest.TestCase):
             p_on_step=7,
             p_off_step=7)
 
+        hyper_parameters = HyperParameters(num_guesses=1)
+
         initial_guesses = fit.get_initial_guesses(
             y=4,
             trace=trace,
             parameter_ranges=parameter_ranges,
-            num_guesses=1)
+            hyper_parameters=hyper_parameters)
 
         true_vals = jnp.asarray([2000, 5000, 0.03, 0.05, 0.05])
         result = jnp.isclose(true_vals, initial_guesses)
