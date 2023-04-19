@@ -399,7 +399,9 @@ def get_likelihood(y, trace, parameters, hyper_parameters):
     fluorescence_model = FluorescenceModel(
         mu_i=mu,
         sigma=sigma,
-        mu_b=mu_bg)
+        mu_b=mu_bg,
+        max_x=hyper_parameters.max_x_value,
+        num_bins=hyper_parameters.num_x_bins)
     t_model = TraceModel(fluorescence_model)
 
     comb_matrix = transition_matrix._create_comb_matrix(y)
