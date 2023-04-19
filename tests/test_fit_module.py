@@ -26,7 +26,7 @@ class TestFit(unittest.TestCase):
         return
 
     def test_initial_guess(self):
-        f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma_i=0.03)
+        f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma=0.03)
         t_model = TraceModel(f_model, p_on=0.05, p_off=0.05)
         trace, states = t_model.generate_trace(4, 10, 1000)
 
@@ -54,41 +54,73 @@ class TestFit(unittest.TestCase):
         self.assertTrue(result.all())
         return
 
-    def test_find_y(self):
-        f_model = FluorescenceModel(mu_i=2000, mu_b=5000, sigma_i=0.03)
+    def test_likelihood(self):
+
+        f_model = FluorescenceModel(mu_i=100, mu_b=50, sigma=0.03)
         t_model = TraceModel(f_model, p_on=0.05, p_off=0.05)
+        trace, states = t_model.generate_trace(1, 10, 100)
 
-        parameter_ranges = ParameterRanges(
-            mu_range=(1000, 3000),
-            mu_bg_range=(5000, 5000),
-            sigma_range=(0.1, 0.1),
-            p_on_range=(0.001, 0.1),
-            p_off_range=(0.001, 0.1),
-            mu_step=5,
-            mu_bg_step=1,
-            sigma_step=1,
-            p_on_step=5,
-            p_off_step=5)
+        # test 1: don't set max x value -> should pick it by itself
+
         hyper_parameters = HyperParameters(
+            y_low=1,
             gradient_step_size=1e-3,
-            num_guesses=1,  # all the parameters above
-            epoch_length=1000)
-        traces = []
-        for seed in range(2):
-            trace, states = t_model.generate_trace(4, seed, 1000)
-            traces.append(trace)
-        traces = jnp.array(traces)
-        ys, parameters, likelihoods = fit.most_likely_ys(
-            traces,
-            y_low=2,
-            y_high=6,
-            parameter_ranges=parameter_ranges,
+            num_guesses=1,
+            epoch_length=1000,
+            is_done_limit=1e-5,
+            mu_gradient_step_size=1e-3,
+            distribution_threshold=1e-1,
+            max_x_value=None)
+
+        likelihood_no_max_value = fit.get_likelihood(
+            y=1,
+            trace=trace,
+            parameters= jnp.asarray([100, 50, 0.03, 0.05, 0.05]),
             hyper_parameters=hyper_parameters)
-        result = ys == jnp.asarray([4, 4])
+        print(likelihood_no_max_value)
 
-        self.assertTrue(result.all())
+        # test 2: set max x value to data max -> should be same as before
 
-        return
+        hyper_parameters = HyperParameters(
+            y_low=1,
+            gradient_step_size=1e-3,
+            num_guesses=1,
+            epoch_length=1000,
+            is_done_limit=1e-5,
+            mu_gradient_step_size=1e-3,
+            distribution_threshold=1e-1,
+            max_x_value=trace.max())
+
+        likelihood_data_max_value = fit.get_likelihood(
+            y=1,
+            trace=trace,
+            parameters= jnp.asarray([100, 50, 0.03, 0.05, 0.05]),
+            hyper_parameters=hyper_parameters)
+        print(likelihood_data_max_value)
+
+        self.assertEqual(likelihood_no_max_value, likelihood_data_max_value)
+
+        # test 3: set max x value to some other value -> make sure we always
+        # get the same result
+
+        hyper_parameters = HyperParameters(
+            y_low=1,
+            gradient_step_size=1e-3,
+            num_guesses=1,
+            epoch_length=1000,
+            is_done_limit=1e-5,
+            mu_gradient_step_size=1e-3,
+            distribution_threshold=1e-1,
+            max_x_value=200)
+
+        likelihood_some_max_value = fit.get_likelihood(
+            y=1,
+            trace=trace,
+            parameters= jnp.asarray([100, 50, 0.03, 0.05, 0.05]),
+            hyper_parameters=hyper_parameters)
+        print(likelihood_some_max_value)
+
+        self.assertAlmostEqual(likelihood_some_max_value, 392.39117, 5)
 
 
 if __name__ == '__main__':
