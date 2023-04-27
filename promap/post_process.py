@@ -1,16 +1,5 @@
-import numpy as np
-from promap.constants import (
-    PARAM_MU,
-    PARAM_MU_BG,
-    PARAM_SIGMA,
-    PARAM_P_ON,
-    PARAM_P_OFF)
-from promap.fluorescence_model import FluorescenceModel
-from promap.trace_model import TraceModel
-from promap import transition_matrix
-import jax.numpy as jnp
 from scipy.stats import entropy
-from jax import vmap
+import jax.numpy as jnp
 
 
 def post_process(
@@ -25,14 +14,14 @@ def post_process(
     Inputs: traces, parameters, likelihoods, hyper_parameters
 
     '''
-    # find max likelihood and use it as value to replace bad values with
-    sub_value = jnp.max(likelihoods[jnp.isfinite(likelihoods)])
+    # find min likelihood and use it as value to replace bad values with
+    sub_value = jnp.min(likelihoods[jnp.isfinite(likelihoods)])
 
     # remove nan likelihoods
     proc_likelihoods = likelihoods.at[jnp.isnan(likelihoods)].set(sub_value)
 
     # comapre differences in distributions
-    dist_diffs = _compare_dists(traces, parameters, hyper_parameters)
+    dist_diffs = compare_dists(traces, parameters, hyper_parameters)
     likes_to_remove = dist_diffs > hyper_parameters.distribution_threshold
 
     proc_likelihoods = proc_likelihoods.at[likes_to_remove].set(sub_value)
@@ -44,23 +33,44 @@ def post_process(
     return most_likely_ys, proc_likelihoods
 
 
-def _compare_dists(
+def compare_dists(
         traces,
         parameters,
         hyper_parameters):
     # find the KL divergence between the measured viterbi distribution and the
     # theoretical distribution
 
-    viterbi_traces, viterbi_dist = _viterbi(
+    viterbi_traces, viterbi_dist = viterbi(
         traces,
         parameters,
         hyper_parameters.y_low)
 
-    steady_state_dist = _steady_state(parameters, hyper_parameters.y_low)
+    steady_state_dist = steady_state(parameters, hyper_parameters.y_low)
 
     kl = entropy(viterbi_dist, steady_state_dist, axis=2)
 
     return kl
+
+
+"""
+def steady_state(parameters, y_low):
+    # theoretical steady state distribution of states for given parameters
+    # calc using forward model of HMM
+
+    ss_dists = np.zeros((
+        parameters.shape[0],
+        parameters.shape[1],
+        parameters.shape[0]+y_low))
+    for i, y in enumerate(range(y_low, y_low+parameters.shape[0])):
+        for t in range(parameters.shape[1]):
+            trans_matrix = transition_matrix.create_transition_matrix(
+                y=y,
+                p_on=parameters[i, t, PARAM_P_ON],
+                p_off=parameters[i, t, PARAM_P_OFF],)
+
+            ss_dists[i, t, :y+1] = transition_matrix.p_initial(y, trans_matrix)
+
+    return ss_dists
 
 
 def viterbi_single_trace(trace, params, y, bins):
@@ -82,7 +92,7 @@ def viterbi_single_trace(trace, params, y, bins):
     return vit_trace, vit_dist
 
 
-def _viterbi(traces, parameters, y_low):
+def viterbi(traces, parameters, y_low):
 
     ys = jnp.asarray(range(y_low, y_low+parameters.shape[0]))
     bins = jnp.asarray(range(parameters.shape[0] + 1 + y_low))
@@ -99,23 +109,4 @@ def _viterbi(traces, parameters, y_low):
         vit_dists.append(b[0])
 
     return jnp.asarray(vit_traces), jnp.asarray(vit_dists)
-
-
-def _steady_state(parameters, y_low):
-    # theoretical steady state distribution of states for given parameters
-    # calc using forward model of HMM
-
-    ss_dists = np.zeros((
-        parameters.shape[0],
-        parameters.shape[1],
-        parameters.shape[0]+y_low))
-    for i, y in enumerate(range(y_low, y_low+parameters.shape[0])):
-        for t in range(parameters.shape[1]):
-            trans_matrix = transition_matrix.create_transition_matrix(
-                y=y,
-                p_on=parameters[i, t, PARAM_P_ON],
-                p_off=parameters[i, t, PARAM_P_OFF],)
-
-            ss_dists[i, t, :y+1] = transition_matrix.p_initial(y, trans_matrix)
-
-    return ss_dists
+"""

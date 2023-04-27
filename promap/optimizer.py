@@ -1,7 +1,6 @@
 from collections import namedtuple
 import optax
 import jax.numpy as jnp
-from promap.constants import PARAM_MU
 
 
 Optimizer = namedtuple('Optimizer', ['init', 'step'])
@@ -29,6 +28,9 @@ def create_optimizer(value_grad_func, hyper_parameters):
         # get value and gradient
 
         value, gradients = value_grad_func(trace, parameters)
+
+        # we maximize -> minimize with inverted gradients
+        gradients = -gradients
 
         # gradients must also be in same tuple form
         grads = (gradients[:2], gradients[2:])

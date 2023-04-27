@@ -1,235 +1,91 @@
+from .constants import eps
+from jax import random
 import jax
 import jax.numpy as jnp
-from jax import random
 
 
-class FluorescenceModel:
-    '''
-    - Deals with the intensity measurements
-    - The emmission probabilities of the hidden markov model
+def create_emission_distribution(y, mu, mu_bg, sigma, hyper_parameters):
 
-    Args:
-        mu_i:
-            the mean intensity of a bound fluorophore
+    max_x = hyper_parameters.max_x
+    num_bins = hyper_parameters.num_x_bins
+    bin_width = max_x / num_bins
 
-        sigma:
-            the standard deviation of the intensity of a bound fluorophore
+    intensities_left = (
+        jnp.arange(0, num_bins) * bin_width
+    )
+    intensities_right = intensities_left + bin_width
 
-        mu_b:
-            the mean intensity of the background
+    zs = jnp.arange(0, y + 1)
 
-        num_bins (``int``):
+    p_emission_lookup = jax.vmap(
+        p_x_given_z,
+        in_axes=(0, 0, None, None, None, None, None))(
+            intensities_left,
+            intensities_right,
+            zs,
+            mu, mu_bg, sigma,
+            hyper_parameters)
 
-            The number of bins to discretize the trace intensities to.
+    return p_emission_lookup
 
-        p_outlier (``float``):
 
-            The probability to observe an outlier intensity value, i.e., a
-            value that was not drawn from the ``distribution``, like
-            salt-and-pepper noise.
+def discretize_trace(trace, hyper_parameters):
+    """Convert a float-valued trace into a trace of bin indices, according
+    to the x discretization."""
 
-        distribution (``str``):
-            The type of distribution to use to model the intensity values of
-            one bound fluorophore. Possible choices: 'lognormal' (default),
-            'normal', and 'poisson'.
-    '''
+    num_bins = hyper_parameters.num_x_bins
+    max_x = hyper_parameters.max_x
+    bin_width = max_x / num_bins
 
-    def __init__(self,
-                 y,
-                 mu_i=1,
-                 sigma=0.1,
-                 mu_b=1,
-                 max_x=None,
-                 num_bins=1024,
-                 p_outlier=1e-3,
-                 distribution='lognormal'):
+    if num_bins <= 256:
+        x_dtype = 'uint8'
+    elif num_bins <= 65536:
+        x_dtype = 'uint16'
+    else:
+        x_dtype = 'uint32'
 
-        assert max_x is not None, \
-            "The maximum intensity value has to be provided"
+    return (trace / bin_width).astype(x_dtype)
 
-        self.mu_i = mu_i
-        self.sigma = sigma
-        self.mu_b = mu_b
-        self.distribution = distribution
-        self.max_x = max_x
-        self.num_bins = num_bins
-        self.bin_width = self.max_x / self.num_bins
-        self.p_outlier = p_outlier
 
-        self.p_emission_lookup = self._create_p_emission_lookup(y)
+def p_x_given_z(x_left, x_right, z, mu, mu_bg, sigma, hyper_parameters):
 
-    def sample_x_z(self, z, key):
-        """Draw sample intensity values given a number of bound fluorophores.
+    p_outlier = hyper_parameters.p_outlier
+    num_bins = hyper_parameters.num_x_bins
 
-        Args:
+    mean = mu * z + mu_bg
 
-            z (tensor of ``int``):
-                List containing the number of bound fluorophores.
+    return (
+        p_outlier / num_bins +
+        (1 - p_outlier) * p_lognorm(x_left, x_right, mean, sigma)
+    )
 
-            key:
-                JAX random number generator key.
 
-        Returns:
+def sample_x_given_z(z, mu, mu_bg, sigma, key):
 
-            A trace of intensity values.
-        """
+    log_mean = jnp.log(mu * z + mu_bg)
+    std_samples = random.normal(key, z.shape)
 
-        if self.distribution == 'lognormal':
-            return self._sample_x_z_lognorm(z, key)
-        elif self.distribution == 'normal':
-            raise RuntimeError("Not implemented yet")
-        elif self.distribution == 'poisson':
-            return self._sample_x_z_poisson(z, key)
-        else:
-            raise RuntimeError(
-                f"Unknown distribution type {self.distribution}")
+    return jnp.exp(std_samples * sigma + log_mean)
 
-    # TODO: delete this function
-    def p_x_given_zs(self, x, max_z):
-        """Compute the probability of observing an intensity value for all
-        number of bound fluorophores (``z``) from ``0`` to (including)
-        ``max_z``.
 
-        Args:
+def p_lognorm(x_left, x_right, mean, sigma):
 
-            x (array of type ``float``):
+    log_mean = jnp.log(mean)
 
-                The observed intensity values.
+    # ensure the following log's behave well
+    x_left = jnp.clip(x_left, a_min=eps)
+    x_right = jnp.clip(x_right, a_min=eps)
 
-            max_z (``int``):
+    log_x_left = jnp.log(x_left)
+    log_x_right = jnp.log(x_right)
 
-                The maximum number of binding sites.
+    cdf_left = jax.scipy.stats.norm.cdf(
+        log_x_left,
+        loc=log_mean,
+        scale=sigma)
+    cdf_right = jax.scipy.stats.norm.cdf(
+        log_x_right,
+        loc=log_mean,
+        scale=sigma)
 
-        Returns:
-
-            Array of shape ``(max_z + 1, n)`` where ``n`` is the number of
-            elements in ``x``, containing the emission probabilites for ``z =
-            0, ..., max_z``.
-        """
-
-        max_x = x.max() if self.max_x is None else self.max_x
-        self.bin_width = max_x / self.num_bins
-
-        zs = jnp.arange(0, max_z + 1)
-        x = jnp.expand_dims(x, 0)
-
-        result = jax.vmap(
-            self._p_x_given_z,
-            in_axes=(1, None))(x, zs)
-
-        return result.T
-
-    def discretize_trace(self, trace):
-        """Convert a float-valued trace into a trace of bin indices, according
-        to the x discretization."""
-
-        if self.num_bins <= 256:
-            x_dtype = 'uint8'
-        elif self.num_bins <= 65536:
-            x_dtype = 'uint16'
-        else:
-            x_dtype = 'uint32'
-
-        return (trace / self.bin_width).astype(x_dtype)
-
-    def _create_p_emission_lookup(self, y):
-
-        intensities = (
-            jnp.arange(0, self.num_bins) * self.bin_width +
-            self.bin_width / 2
-        )
-        zs = jnp.arange(0, y + 1)
-
-        p_emission_lookup = jax.vmap(
-            self._p_x_given_z,
-            in_axes=(0, None))(intensities, zs)
-
-        return p_emission_lookup
-
-    def _sample_x_z_poisson(self, z, seed):
-        ''' Samples a Poisson random variable '''
-        lam = self.mu_i * z + self.mu_b
-        key = random.PRNGKey(seed)
-        key, subkey = random.split(key)
-        value = random.poisson(subkey, lam)
-
-        return value
-
-    def _sample_x_z_lognorm(self, z, key):
-
-        mean = jnp.log(self.mu_i * z + self.mu_b)
-
-        std_value = random.normal(key, z.shape)
-        value = (std_value * self.sigma) + mean
-
-        return jnp.exp(value)
-
-    def _p_x_given_z_poisson(self, trace, z):
-        mu = z * self.mu_i + self.mu_b
-        prob = jax.scipy.stats.poisson.pmf(trace, mu=mu)
-
-        return prob
-
-    def _p_x_given_z_normal(self, x, z):
-
-        mean = self.mu_i * z + self.mu_b
-
-        x_left = (x // self.bin_width) * self.bin_width
-        x_right = x_left + self.bin_width
-
-        prob_1 = jax.scipy.stats.norm.cdf(
-            x_left,
-            loc=mean,
-            scale=self.sigma)
-        prob_2 = jax.scipy.stats.norm.cdf(
-            x_right,
-            loc=mean,
-            scale=self.sigma)
-
-        prob = jnp.abs(prob_1 - prob_2)
-
-        return prob
-
-    def _p_x_given_z_lognorm(self, x, z):
-
-        mean = jnp.log(self.mu_i * z + self.mu_b)
-
-        x_left = (x // self.bin_width) * self.bin_width
-        x_right = x_left + self.bin_width
-
-        log_x_left = jnp.log(x_left)
-        log_x_right = jnp.log(x_right)
-
-        prob_1 = jax.scipy.stats.norm.cdf(
-            log_x_left,
-            loc=mean,
-            scale=self.sigma)
-        prob_2 = jax.scipy.stats.norm.cdf(
-            log_x_right,
-            loc=mean,
-            scale=self.sigma)
-
-        prob = jnp.abs(prob_1 - prob_2)
-
-        return prob
-
-    def _p_x_given_z(self, x, z):
-
-        if self.distribution == 'lognormal':
-            p_x_given_z_dist = self._p_x_given_z_lognorm
-        elif self.distribution == 'normal':
-            p_x_given_z_dist = self._p_x_given_z_normal
-        elif self.distribution == 'poisson':
-            p_x_given_z_dist = self._p_x_given_z_poisson
-        else:
-            raise RuntimeError(
-                f"Unknown distribution type {self.distribution}")
-
-        return (
-            self.p_outlier * self._p_x_given_z_uniform() +
-            (1 - self.p_outlier) * p_x_given_z_dist(x, z)
-        )
-
-    def _p_x_given_z_uniform(self):
-
-        return 1.0/self.num_bins
+    return cdf_right - cdf_left
