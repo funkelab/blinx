@@ -1,49 +1,47 @@
-import jax
 import jax.numpy as jnp
+import numpy as np
+import scipy.signal
 
 
-def find_minima_nd(matrix, num_minima):
-    '''
-    Find local minima of an N dimensional matrix
-    - finds nearest neighbors of each point
-    - compares neighbors to determine if point is a minimum
+def find_local_maxima(matrix, num_maxima=None):
 
-    Returns:
-        a N x num_minima array containing the coordinates of the found
-        local minima
-    '''
+    # convert to numpy array
+    matrix = np.asarray(matrix)
 
-    # FIXME: has to be a way to avoid hard coding this
-    # but not the worst because input params will always be 5d
-    shape = matrix.shape
-    dim_1 = jnp.arange(shape[0])
-    dim_2 = jnp.arange(shape[1])
-    dim_3 = jnp.arange(shape[2])
-    dim_4 = jnp.arange(shape[3])
-    dim_5 = jnp.arange(shape[4])
+    if num_maxima is None:
+        num_maxima = matrix.size
 
-    num_elements = jnp.product(jnp.array(matrix.shape))
+    # pad matrix with -inf
+    padded = np.ones(tuple(s + 2 for s in matrix.shape), dtype=matrix.dtype)
+    padded *= -np.inf
+    slices = tuple(slice(1, s + 1) for s in matrix.shape)
+    padded[slices] = matrix
 
-    b = jnp.asarray(jnp.meshgrid(
-        dim_1, dim_2, dim_3, dim_4, dim_5
-        )).reshape((matrix.ndim, num_elements)).T
+    padded_indices = scipy.signal.argrelmax(np.asarray(padded), mode="wrap")
+    # indices into original matrix without padding
+    indices = tuple(i - 1 for i in padded_indices)
 
-    indices = jnp.arange(num_elements)
-    d = jax.vmap(is_minimum_point, in_axes=(0, None, None))(indices, b, matrix)
+    # set all non-maxima to -inf
+    maxima = np.ones_like(matrix)
+    maxima *= -np.inf
+    maxima[indices] = matrix[indices]
 
-    e = matrix.reshape(jnp.product(matrix.shape))
+    # get all maximum values, sorted
+    values, indices = np.unique(maxima, return_index=True)
 
-    return b[jnp.where(d == e, size=num_minima)]
+    assert values[0] == -np.inf
 
+    # first index should point to -np.inf, drop it
+    indices = indices[1:]
 
-def is_minimum_point(index, b, a):
-    # Given a coordinate, finds the nearest neighbors and determines if given
-    # coordinate is a local minimum
-    centered = b - b[index]
-    dist = jnp.linalg.norm(centered, axis=1)
-    c = jnp.where(dist <= 1, size=len(a.shape*2)+1)
-    tile = b[c]
-    tile_values = a[tile[:, 0], tile[:, 1]]
-    all_same = jnp.all(tile_values == tile_values[0])
-    result = jax.lax.cond(all_same, lambda: 0., lambda: jnp.min(tile_values))
-    return result
+    # retain only last num_maxima values
+    if len(indices) > num_maxima:
+        indices = indices[-num_maxima:]
+
+    # convert back to non-flattened indices
+    indices = np.unravel_index(indices, matrix.shape)
+
+    # convert to jax array
+    indices = tuple(jnp.array(i) for i in indices)
+
+    return indices

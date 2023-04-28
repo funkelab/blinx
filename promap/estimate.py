@@ -3,9 +3,10 @@ import jax.numpy as jnp
 
 from .hyper_parameters import HyperParameters
 from .parameter_ranges import ParameterRanges
+from .parameters import Parameters
 # FIXME: post_process should be renamed and find a new home
 from .post_process import post_process as find_most_likely_y
-from .utils import find_minima_nd
+from .utils import find_local_maxima
 from .trace_model import get_trace_log_likelihood
 from .optimizer import create_optimizer
 
@@ -244,18 +245,16 @@ def get_initial_parameter_guesses(
 
     # reshape parameters and log likelihoods so they are "continuous" along
     # each dimension
-    parameters = parameters.reshape(
-        parameter_ranges.num_values() +
-        (len(parameter_ranges.num_values()),)
-    )
-    results = log_likelihoods.reshape(
-        parameter_ranges.num_values())
+    parameters = Parameters(*(
+        p.reshape(parameter_ranges.num_values())
+        for p in parameters
+    ))
+    log_likelihoods = log_likelihoods.reshape(parameter_ranges.num_values())
 
-    # find locations where parameters minimize log likelihoods
-    min_c = find_minima_nd(results, num_guesses)
+    # find locations where parameters maximize log likelihoods
+    min_indices = find_local_maxima(log_likelihoods, num_guesses)
 
-    return parameters[min_c[:, 0], min_c[:, 1], min_c[:, 2], min_c[:, 3],
-                      min_c[:, 4]]
+    return Parameters(*(p[min_indices] for p in parameters))
 
 
 def optimize_parameters(
