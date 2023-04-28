@@ -231,7 +231,7 @@ def get_initial_parameter_guesses(
     '''
     num_guesses = hyper_parameters.num_guesses
 
-    parameters = parameter_ranges.to_tensor()
+    parameters = parameter_ranges.to_parameters()
 
     # calculate log likelihood for each combination of parameters
     log_likelihoods = jax.vmap(

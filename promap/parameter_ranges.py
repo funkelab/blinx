@@ -1,3 +1,4 @@
+from .parameters import Parameters
 import jax.numpy as jnp
 
 
@@ -71,29 +72,25 @@ class ParameterRanges:
             ]
         )
 
-    def to_tensor(self):
+    def to_parameters(self):
 
-        mus = self.mu_range.to_tensor()
-        mu_bgs = self.mu_bg_range.to_tensor()
-        sigmas = self.sigma_range.to_tensor()
-        p_ons = self.p_on_range.to_tensor()
-        p_offs = self.p_off_range.to_tensor()
+        range_tensors = {
+            "mu": self.mu_range.to_tensor(),
+            "mu_bg": self.mu_bg_range.to_tensor(),
+            "sigma": self.sigma_range.to_tensor(),
+            "p_on": self.p_on_range.to_tensor(),
+            "p_off": self.p_off_range.to_tensor()
+        }
 
-        range_tensors = (
-            mus,
-            mu_bgs,
-            sigmas,
-            p_ons,
-            p_offs
-        )
+        values = {
+            name: v.flatten()
+            for name, v in zip(
+                range_tensors.keys(),
+                jnp.meshgrid(*range_tensors.values(), indexing='ij')
+            )
+        }
 
-        meshgrid = jnp.meshgrid(*range_tensors[::-1], indexing='ij')
-        parameters = jnp.array(meshgrid).T.reshape(-1, len(range_tensors))
-
-        # first parameter first, last parameter fastest running
-        parameters = parameters[:, ::-1]
-
-        return parameters
+        return Parameters(**values)
 
 
 class Range:

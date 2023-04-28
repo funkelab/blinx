@@ -1,17 +1,10 @@
+from .fluorescence_model import create_emission_distribution, discretize_trace, sample_x_given_z
+from .markov_chain import get_steady_state, get_measurement_log_likelihood
 from jax import random
 from scipy.special import comb
 import jax
 import jax.numpy as jnp
 import time
-
-from .constants import (
-    PARAM_MU,
-    PARAM_MU_BG,
-    PARAM_SIGMA,
-    PARAM_P_ON,
-    PARAM_P_OFF)
-from .markov_chain import get_steady_state, get_measurement_log_likelihood
-from .fluorescence_model import create_emission_distribution, discretize_trace, sample_x_given_z
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
@@ -19,12 +12,11 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     TODO: add a docstring
     '''
 
-    # TODO: parameters should be named tuple: parameters.mu etc.
-    mu = parameters[PARAM_MU]
-    mu_bg = parameters[PARAM_MU_BG]
-    sigma = parameters[PARAM_SIGMA]
-    p_on = parameters[PARAM_P_ON]
-    p_off = parameters[PARAM_P_OFF]
+    mu = parameters.mu
+    mu_bg = parameters.mu_bg
+    sigma = parameters.sigma
+    p_on = parameters.p_on
+    p_off = parameters.p_off
 
     p_transition = create_transition_matrix(y, p_on, p_off)
     p_initial = get_steady_state(p_transition)
@@ -68,12 +60,11 @@ def generate_trace(y, parameters, num_frames, seed=None):
     if seed is None:
         seed = time.time_ns()
 
-    # TODO: parameters should be named tuple: parameters.mu etc.
-    mu = parameters[PARAM_MU]
-    mu_bg = parameters[PARAM_MU_BG]
-    sigma = parameters[PARAM_SIGMA]
-    p_on = parameters[PARAM_P_ON]
-    p_off = parameters[PARAM_P_OFF]
+    mu = parameters.mu
+    mu_bg = parameters.mu_bg
+    sigma = parameters.sigma
+    p_on = parameters.p_on
+    p_off = parameters.p_off
 
     p_transition = create_transition_matrix(y, p_on, p_off)
     p_initial = get_steady_state(p_transition)
