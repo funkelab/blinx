@@ -2,18 +2,14 @@ from scipy.stats import entropy
 import jax.numpy as jnp
 
 
-def post_process(
-        traces,
-        parameters,
-        likelihoods,
-        hyper_parameters):
-    '''
+def post_process(traces, parameters, likelihoods, hyper_parameters):
+    """
     Big wrapper function that combines all post processing steps and returns
     the best y guess for each trace
 
     Inputs: traces, parameters, likelihoods, hyper_parameters
 
-    '''
+    """
     # find min likelihood and use it as value to replace bad values with
     sub_value = jnp.min(likelihoods[jnp.isfinite(likelihoods)])
 
@@ -27,23 +23,16 @@ def post_process(
     proc_likelihoods = proc_likelihoods.at[likes_to_remove].set(sub_value)
 
     # find new most likely y values
-    most_likely_ys = jnp.argmin(proc_likelihoods, axis=0) + \
-        hyper_parameters.y_low
+    most_likely_ys = jnp.argmin(proc_likelihoods, axis=0) + hyper_parameters.y_low
 
     return most_likely_ys, proc_likelihoods
 
 
-def compare_dists(
-        traces,
-        parameters,
-        hyper_parameters):
+def compare_dists(traces, parameters, hyper_parameters):
     # find the KL divergence between the measured viterbi distribution and the
     # theoretical distribution
 
-    viterbi_traces, viterbi_dist = viterbi(
-        traces,
-        parameters,
-        hyper_parameters.y_low)
+    viterbi_traces, viterbi_dist = viterbi(traces, parameters, hyper_parameters.y_low)
 
     steady_state_dist = steady_state(parameters, hyper_parameters.y_low)
 

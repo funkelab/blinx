@@ -4,13 +4,15 @@ import pandas as pd
 import h5py
 
 
-def extract_trace(image_file_path,
-                  pick_file_path,
-                  drift_file_path,
-                  spot_num,
-                  pixels=0,
-                  all_spots=False):
-    '''
+def extract_trace(
+    image_file_path,
+    pick_file_path,
+    drift_file_path,
+    spot_num,
+    pixels=0,
+    all_spots=False,
+):
+    """
     Extracts an intensity trace from a DNA-PAINT movie
 
     Args:
@@ -45,14 +47,14 @@ def extract_trace(image_file_path,
         trace (1D array):
             The intensity value of a single structure, measured for each frame
             of the movie, corrected for any xy drift
-    '''
+    """
 
     image = _read_image(image_file_path)
     picked_spots = _read_hdf5(pick_file_path)
-    drift = pd.read_csv(drift_file_path, sep=' ')
+    drift = pd.read_csv(drift_file_path, sep=" ")
 
     if all_spots is True:
-        num_spots = picked_spots['group'].max()
+        num_spots = picked_spots["group"].max()
         trace = np.zeros((image.shape[2], num_spots))
         for i in range(num_spots):
             trace[:, i] = _single_spot(image, picked_spots, drift, i, pixels)
@@ -64,8 +66,7 @@ def extract_trace(image_file_path,
 
 
 def _single_spot(image, picked_spots, drift, spot_num, pixels):
-
-    single_spot = picked_spots[picked_spots['group'] == spot_num]
+    single_spot = picked_spots[picked_spots["group"] == spot_num]
 
     single_spot_array = np.asarray(single_spot)
     drift_array = np.asarray(drift)
@@ -80,10 +81,12 @@ def _single_spot(image, picked_spots, drift, spot_num, pixels):
 
     # interpolate the position of structure between localizations / events
     total_frames = np.arange(0, image.shape[2])
-    xs = np.interp(total_frames, undrifted_cords[:, 0],
-                   undrifted_cords[:, 1]).astype(int)
-    ys = np.interp(total_frames, undrifted_cords[:, 0],
-                   undrifted_cords[:, 2]).astype(int)
+    xs = np.interp(total_frames, undrifted_cords[:, 0], undrifted_cords[:, 1]).astype(
+        int
+    )
+    ys = np.interp(total_frames, undrifted_cords[:, 0], undrifted_cords[:, 2]).astype(
+        int
+    )
 
     # extract intensity of drfiting structure for all frames
     x_list, y_list = array_list(image, xs, ys, pixels)
@@ -97,7 +100,7 @@ def _single_spot(image, picked_spots, drift, spot_num, pixels):
 
 def _read_hdf5(file):
     temp = h5py.File(file)
-    structured_array = np.asarray(temp['locs'])
+    structured_array = np.asarray(temp["locs"])
 
     return pd.DataFrame(structured_array)
 
@@ -113,10 +116,9 @@ def _read_image(file_path):
 def array_list(image, xs, ys, pixels):
     x_list = []
     y_list = []
-    for x in range(-pixels, pixels+1):
-        for y in range(-pixels, pixels+1):
+    for x in range(-pixels, pixels + 1):
+        for y in range(-pixels, pixels + 1):
             x_list.append(xs + x)
             y_list.append(ys + y)
 
     return x_list, y_list
-

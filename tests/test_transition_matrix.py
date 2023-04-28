@@ -22,17 +22,15 @@ def p_off(request):
 
 @pytest.fixture
 def true_transition_matrix(y, p_on, p_off):
-
     size = y + 1  # possible states range from 0 - y inclusive
     transition_m = np.zeros((size, size))
 
     for i in range(size):
         for j in range(size):
             p = 0
-            for z in range(i+1):
-                p += (
-                    stats.binom.pmf(z, i, p_off) *
-                    stats.binom.pmf(j-i+z, y-i, p_on)
+            for z in range(i + 1):
+                p += stats.binom.pmf(z, i, p_off) * stats.binom.pmf(
+                    j - i + z, y - i, p_on
                 )
             transition_m[i, j] = p
 
@@ -40,7 +38,6 @@ def true_transition_matrix(y, p_on, p_off):
 
 
 def test_consistency(true_transition_matrix):
-
     (y, p_on, p_off), _ = true_transition_matrix
 
     transition_matrix = create_transition_matrix(y, p_on, p_off)
@@ -57,13 +54,10 @@ def test_consistency(true_transition_matrix):
 
 
 def test_correctness(true_transition_matrix):
-
     (y, p_on, p_off), compare = true_transition_matrix
 
     transition_matrix = create_transition_matrix(y, p_on, p_off)
 
     np.testing.assert_allclose(
-        np.asarray(transition_matrix),
-        np.asarray(compare),
-        rtol=1e-6
+        np.asarray(transition_matrix), np.asarray(compare), rtol=1e-6
     )

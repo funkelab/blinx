@@ -4,7 +4,6 @@ import jax.numpy as jnp
 
 
 def test_parameter_guesses(trace_with_groundtruth):
-
     trace = trace_with_groundtruth["trace"]
     traces = jnp.expand_dims(trace, axis=0)
     parameters = trace_with_groundtruth["parameters"]
@@ -25,14 +24,12 @@ def test_parameter_guesses(trace_with_groundtruth):
         mu_bg_step=3,
         sigma_step=1,
         p_on_step=1,
-        p_off_step=1
+        p_off_step=1,
     )
 
     parameter_guesses = get_initial_parameter_guesses(
-        traces,
-        y,
-        parameter_ranges,
-        hyper_parameters)
+        traces, y, parameter_ranges, hyper_parameters
+    )
 
     # should return only one guess
     assert len(parameter_guesses.mu) == 1
@@ -42,7 +39,6 @@ def test_parameter_guesses(trace_with_groundtruth):
 
 
 def test_inference(trace_with_groundtruth):
-
     trace = trace_with_groundtruth["trace"]
     traces = jnp.expand_dims(trace, axis=0)
     parameters = trace_with_groundtruth["parameters"]
@@ -63,11 +59,9 @@ def test_inference(trace_with_groundtruth):
         mu_bg_step=3,
         sigma_step=1,
         p_on_step=1,
-        p_off_step=1
+        p_off_step=1,
     )
 
     parameters, likelihood = estimate_parameters(
-        traces,
-        y,
-        parameter_ranges,
-        hyper_parameters)
+        traces, y, parameter_ranges, hyper_parameters
+    )

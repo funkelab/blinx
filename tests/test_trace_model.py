@@ -2,11 +2,9 @@ from promap import HyperParameters
 from promap.trace_model import get_trace_log_likelihood
 import jax
 import numpy as np
-import pytest
 
 
 def test_gradients(trace_with_groundtruth):
-
     trace = trace_with_groundtruth["trace"]
     parameters = trace_with_groundtruth["parameters"]
     y = trace_with_groundtruth["y"]

@@ -1,11 +1,8 @@
 from promap import ParameterRanges
-import jax.numpy as jnp
 import numpy as np
-import pytest
 
 
 def test_to_parameters():
-
     parameter_ranges = ParameterRanges(
         mu_range=(1, 4),
         mu_bg_range=(5, 5),
@@ -16,7 +13,8 @@ def test_to_parameters():
         mu_bg_step=1,
         sigma_step=2,
         p_on_step=10,
-        p_off_step=10)
+        p_off_step=10,
+    )
 
     parameters = parameter_ranges.to_parameters()
 
@@ -42,5 +40,5 @@ def test_to_parameters():
             parameters.p_off[100],
         ],
         [1, 5, 0.1, 0.0, 0.0],
-        rtol=1e-5
+        rtol=1e-5,
     )

@@ -4,7 +4,6 @@ import scipy.signal
 
 
 def find_local_maxima(matrix, num_maxima=None):
-
     # convert to numpy array
     matrix = np.asarray(matrix)
 

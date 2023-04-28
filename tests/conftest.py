@@ -1,6 +1,5 @@
 from promap.parameters import Parameters
 from promap.trace_model import generate_trace
-import jax.numpy as jnp
 import pytest
 
 

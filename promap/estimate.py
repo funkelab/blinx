@@ -4,6 +4,7 @@ import jax.numpy as jnp
 from .hyper_parameters import HyperParameters
 from .parameter_ranges import ParameterRanges
 from .parameters import Parameters
+
 # FIXME: post_process should be renamed and find a new home
 from .post_process import post_process as find_most_likely_y
 from .utils import find_local_maxima
@@ -11,11 +12,7 @@ from .trace_model import get_trace_log_likelihood
 from .optimizer import create_optimizer
 
 
-def estimate_y(
-        traces,
-        max_y,
-        parameter_ranges=None,
-        hyper_parameters=None):
+def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     """Infer the most likely number of fluorophores for the given traces.
 
     Args:
@@ -65,12 +62,9 @@ def estimate_y(
     all_parameters = []
     all_log_likelihoods = []
     for y in range(hyper_parameters.min_y, max_y + 1):
-
         parameters, log_likelihoods = estimate_parameters(
-            traces,
-            y,
-            parameter_ranges,
-            hyper_parameters)
+            traces, y, parameter_ranges, hyper_parameters
+        )
 
         all_parameters.append(parameters)
         all_log_likelihoods.append(log_likelihoods)
@@ -79,19 +73,13 @@ def estimate_y(
     all_log_likelihoods = jnp.array(all_log_likelihoods)
 
     max_likelihood_y = find_most_likely_y(
-        traces,
-        all_parameters,
-        all_log_likelihoods,
-        hyper_parameters)
+        traces, all_parameters, all_log_likelihoods, hyper_parameters
+    )
 
     return max_likelihood_y, all_parameters, all_log_likelihoods
 
 
-def estimate_parameters(
-        traces,
-        y,
-        parameter_ranges,
-        hyper_parameters):
+def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     """Fit the fluorescence and trace model to the given traces, assuming that
     `y` fluorophores are present in each trace.
 
@@ -138,17 +126,15 @@ def estimate_parameters(
     # get initial guesses for each trace, given the parameter ranges
 
     parameter_guesses = get_initial_parameter_guesses(
-        traces,
-        y,
-        parameter_ranges,
-        hyper_parameters)
+        traces, y, parameter_ranges, hyper_parameters
+    )
 
     # create the objective function for the given y, as well as its gradient
     # function
 
     log_likelihood_grad_func = jax.value_and_grad(
-        lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters),
-        argnums=1)
+        lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters), argnums=1
+    )
 
     # create an optimizer, which will be shared between all optimizations
 
@@ -164,13 +150,8 @@ def estimate_parameters(
     # fit_epoch(traces, parameters, optimizer_states)
     fit_epoch = jax.vmap(  # vmap over traces
         jax.vmap(  # vmap over parameters
-            lambda t, p, os: optimize_parameters(
-                t,
-                p,
-                os,
-                optimizer,
-                hyper_parameters),
-            in_axes=(None, 0, 0)
+            lambda t, p, os: optimize_parameters(t, p, os, optimizer, hyper_parameters),
+            in_axes=(None, 0, 0),
         )
     )
 
@@ -178,19 +159,17 @@ def estimate_parameters(
     num_traces = traces.shape[0]
     num_guesses = hyper_parameters.num_guesses
     parameters = parameter_guesses
-    is_done = jnp.zeros((num_traces, num_guesses), dtype='bool')
+    is_done = jnp.zeros((num_traces, num_guesses), dtype="bool")
 
     while not jnp.all(is_done):
-
         # optimize each trace and guess in parallel for one epoch
 
         # FIXME: this does not remember log likelihoods from earlier epochs
         parameters, optimizer_states, log_likelihoods, is_done = fit_epoch(
-                traces,
-                parameters,
-                optimizer_states)
+            traces, parameters, optimizer_states
+        )
 
-        print(f'fitting y = {y}')
+        print(f"fitting y = {y}")
 
         print("log likelihoods:")
         print(log_likelihoods)
@@ -203,31 +182,23 @@ def estimate_parameters(
     best_guesses = jnp.argmin(log_likelihoods, axis=1)
 
     best_parameters = [
-        Parameters(*(
-            p[t, best_guesses[t]] for p in parameters
-        ))
+        Parameters(*(p[t, best_guesses[t]] for p in parameters))
         for t in range(num_traces)
     ]
-    best_log_likelihoods = jnp.array([
-        log_likelihoods[t, i]
-        for t, i in enumerate(best_guesses)
-    ])
+    best_log_likelihoods = jnp.array(
+        [log_likelihoods[t, i] for t, i in enumerate(best_guesses)]
+    )
 
     return best_parameters, best_log_likelihoods
 
 
-def get_initial_parameter_guesses(
-        traces,
-        y,
-        parameter_ranges,
-        hyper_parameters):
-
-    '''
+def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters):
+    """
     Find rough estimates of the parameters to fit a given trace
 
     Returns: array of parameters of size 5 x num guesses
 
-    '''
+    """
     num_traces = traces.shape[0]
     num_guesses = hyper_parameters.num_guesses
 
@@ -236,31 +207,29 @@ def get_initial_parameter_guesses(
     # vmap over parameters
     log_likelihood_over_parameters = jax.vmap(
         lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters),
-        in_axes=(None, 0)
+        in_axes=(None, 0),
     )
 
     # vmap over traces
-    log_likelihoods = jax.vmap(
-        log_likelihood_over_parameters,
-        in_axes=(0, None))(
-            traces,
-            parameters)
+    log_likelihoods = jax.vmap(log_likelihood_over_parameters, in_axes=(0, None))(
+        traces, parameters
+    )
 
     # reshape parameters so they are "continuous" along each dimension
-    parameters = Parameters(*(
-        p.reshape(parameter_ranges.num_values())
-        for p in parameters
-    ))
+    parameters = Parameters(
+        *(p.reshape(parameter_ranges.num_values()) for p in parameters)
+    )
 
     # The following calls into non-JAX code and should therefore avoid vmap (or
     # any other transformation like jit or grad). That's why we use a for loop
     # to loop over traces instead of a vmap.
     guesses = []
     for i in range(num_traces):
-
         # reshape likelihodds to line up with parameters (so they are
         # "continuous" along each dimension)
-        trace_log_likelihoods = log_likelihoods[i].reshape(parameter_ranges.num_values())
+        trace_log_likelihoods = log_likelihoods[i].reshape(
+            parameter_ranges.num_values()
+        )
 
         # find locations where parameters maximize log likelihoods
         min_indices = find_local_maxima(trace_log_likelihoods, num_guesses)
@@ -270,20 +239,19 @@ def get_initial_parameter_guesses(
     # all guesses are stored in 'guesses', the following stacks them together
     # as if we vmap'ed over traces:
 
-    guesses = Parameters(*(
-        jnp.stack([guesses[i][p] for i in range(num_traces)])
-        for p in range(len(parameters))
-    ))
+    guesses = Parameters(
+        *(
+            jnp.stack([guesses[i][p] for i in range(num_traces)])
+            for p in range(len(parameters))
+        )
+    )
 
     return guesses
 
 
 def optimize_parameters(
-        trace,
-        parameters,
-        optimizer_state,
-        optimizer,
-        hyper_parameters):
+    trace, parameters, optimizer_state, optimizer, hyper_parameters
+):
     """Fit a single trace and parameter pair, using the given optimizer.
 
     Returns:
@@ -298,31 +266,29 @@ def optimize_parameters(
     def step(carry, _):
         parameters, optimizer_state = carry
         parameters, log_likelihood, optimizer_state = optimizer.step(
-            trace,
-            parameters,
-            optimizer_state)
+            trace, parameters, optimizer_state
+        )
         return (parameters, optimizer_state), log_likelihood
 
     (parameters, optimizer_state), log_likelihoods = jax.lax.scan(
         step,
         (parameters, optimizer_state),  # carry init
         [],  # x to scan over (nothing in our case)
-        length=hyper_parameters.epoch_length)  # number of scan steps
+        length=hyper_parameters.epoch_length,
+    )  # number of scan steps
 
     # mark as done if the most recent log likelihoods do not differ by a lot
-    is_done = check_if_converged(
-        log_likelihoods,
-        hyper_parameters.is_done_limit)
+    is_done = check_if_converged(log_likelihoods, hyper_parameters.is_done_limit)
 
     return parameters, optimizer_state, log_likelihoods[-1], is_done
 
 
 def check_if_converged(log_likelihoods, limit):
-    '''
+    """
     Input: an array of log likelihoods shape epoch_length
 
     output: bool
-    '''
+    """
 
     # option_1
     # measures average percent change over last few cycles

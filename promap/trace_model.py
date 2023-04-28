@@ -1,4 +1,8 @@
-from .fluorescence_model import create_emission_distribution, discretize_trace, sample_x_given_z
+from .fluorescence_model import (
+    create_emission_distribution,
+    discretize_trace,
+    sample_x_given_z,
+)
 from .markov_chain import get_steady_state, get_measurement_log_likelihood
 from jax import random
 from scipy.special import comb
@@ -8,9 +12,9 @@ import time
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
-    '''
+    """
     TODO: add a docstring
-    '''
+    """
 
     mu = parameters.mu
     mu_bg = parameters.mu_bg
@@ -25,14 +29,12 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     discrete_trace = discretize_trace(trace, hyper_parameters)
 
     return get_measurement_log_likelihood(
-        discrete_trace,
-        p_emission,
-        p_initial,
-        p_transition)
+        discrete_trace, p_emission, p_initial, p_transition
+    )
 
 
 def generate_trace(y, parameters, num_frames, seed=None):
-    ''' generate a synthetic intensity trace
+    """generate a synthetic intensity trace
 
     Args:
         y (int):
@@ -55,7 +57,7 @@ def generate_trace(y, parameters, num_frames, seed=None):
         states (array):
             - array the same shape as x_trace, showing the hiddens state
                 "z" for each frame
-            '''
+    """
 
     if seed is None:
         seed = time.time_ns()
@@ -75,9 +77,7 @@ def generate_trace(y, parameters, num_frames, seed=None):
     # generate a list of states, use scan b/c state t depends on state t-1
     key = random.PRNGKey(seed)
     key, subkey = random.split(key)
-    initial_z = jnp.expand_dims(
-        random.categorical(subkey, log_p_initial),
-        axis=0)
+    initial_z = jnp.expand_dims(random.categorical(subkey, log_p_initial), axis=0)
 
     # FIXME: this should not be needed, p_initial off?
     # add 100 frames, then remove first 100 to allow system to
@@ -86,9 +86,10 @@ def generate_trace(y, parameters, num_frames, seed=None):
     _, zs = jax.lax.scan(
         # return value of the scan function is carry and "y", both of which are
         # the next z in our case -> (sample_next_z(),) * 2
-        lambda z, k: (sample_next_z(z, p_transition, k),)*2,
+        lambda z, k: (sample_next_z(z, p_transition, k),) * 2,
         init=initial_z,
-        xs=subkeys)
+        xs=subkeys,
+    )
 
     key = random.PRNGKey(seed)
     key, subkey = random.split(key)
@@ -98,18 +99,14 @@ def generate_trace(y, parameters, num_frames, seed=None):
 
 
 def sample_next_z(z, p_transition, key):
-
     p_tr = jnp.log(p_transition[z, :])
     z = random.categorical(key, p_tr)
 
     return z
 
 
-def create_transition_matrix(
-        y,
-        p_on,
-        p_off):
-    '''Create a transition matrix for the number of active elements, given that
+def create_transition_matrix(y, p_on, p_off):
+    """Create a transition matrix for the number of active elements, given that
     elements can randomly turn on and off.
 
     Args:
@@ -128,7 +125,7 @@ def create_transition_matrix(
         A matrix of transition probabilities of shape ``(y + 1, y + 1)``, with
         element ``i, j`` being the probability that the number of active
         elements changes from ``i`` to ``j``.
-    '''
+    """
 
     # TODO: this can be cached for larger y (max_y)
     comb_matrix = create_comb_matrix(y)
@@ -144,15 +141,15 @@ def create_transition_matrix(
     t_off_matrix = comb_matrix * prob_matrix_off
 
     def correlate(t_on_matrix, t_off_matrix):
-        return jax.vmap(
-            lambda a, b: jnp.correlate(a, b, mode='valid')
-        )(t_on_matrix[::-1], t_off_matrix)
+        return jax.vmap(lambda a, b: jnp.correlate(a, b, mode="valid"))(
+            t_on_matrix[::-1], t_off_matrix
+        )
 
-    return correlate(t_on_matrix[:y + 1, max_y - y:], t_off_matrix[:y + 1])
+    return correlate(t_on_matrix[: y + 1, max_y - y :], t_off_matrix[: y + 1])
 
 
 def create_comb_matrix(y, slanted=False):
-    '''Creates a matrix of n-choose-k values.
+    """Creates a matrix of n-choose-k values.
 
     Args:
 
@@ -172,25 +169,21 @@ def create_comb_matrix(y, slanted=False):
         A matrix of n-choose-k values of shape ``(y + 1, y + 1)``, such that
         the element at position ``i, j`` is the number of ways to select ``j``
         elements from ``i`` elements.
-    '''
+    """
 
     end_i = y + 1
     end_j = y + 1 if not slanted else 2 * y + 1
 
     if slanted:
-        return jnp.array([
-            [comb(i, j - (y - i)) for j in range(end_j)]
-            for i in range(end_i)
-        ])
+        return jnp.array(
+            [[comb(i, j - (y - i)) for j in range(end_j)] for i in range(end_i)]
+        )
     else:
-        return jnp.array([
-            [comb(i, j) for j in range(end_j)]
-            for i in range(end_i)
-        ])
+        return jnp.array([[comb(i, j) for j in range(end_j)] for i in range(end_i)])
 
 
 def create_prob_matrix(y, p, slanted=False):
-    '''Creates a matrix of probabilities for flipping ``i`` out of ``j``
+    """Creates a matrix of probabilities for flipping ``i`` out of ``j``
     elements, given that the probability for a single flip is ``p``.
 
     Args:
@@ -214,7 +207,7 @@ def create_prob_matrix(y, p, slanted=False):
         A matrix of probabilities of shape ``(y + 1, y + 1)``, such that the
         element at position ``i, j`` is the probability to flip ``j`` elements
         out of ``i`` elements, if the probability for a single flip is ``p``.
-    '''
+    """
 
     i_indices = jnp.arange(0, y + 1)
     j_indices = jnp.arange(0, 2 * y + 1) if slanted else jnp.arange(0, y + 1)
@@ -226,15 +219,19 @@ def create_prob_matrix(y, p, slanted=False):
 
         a = jnp.clip(j, a_min=0.0)
         b = jnp.clip(i - j, a_min=0.0)
-        return p**a * (1.0 - p)**b
+        return p**a * (1.0 - p) ** b
 
     def prob_i(i):
         if slanted:
+
             def prob_i_fun(j):
                 return prob_i_j(i, j - (y - i))
+
         else:
+
             def prob_i_fun(j):
                 return prob_i_j(i, j)
+
         return jax.vmap(prob_i_fun)(j_indices)
 
     return jax.vmap(prob_i)(i_indices)

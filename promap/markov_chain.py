@@ -4,7 +4,6 @@ import jax
 
 
 def get_steady_state(transition_matrix):
-
     num_states = transition_matrix.shape[0]
 
     # initialize with a uniform distribution
@@ -14,13 +13,15 @@ def get_steady_state(transition_matrix):
         lambda state, _: (jnp.matmul(state, transition_matrix), None),
         initial_state,
         xs=None,
-        length=100)
+        length=100,
+    )
 
     return steady_state
 
 
-def get_measurement_log_likelihood(measurements, p_measurement, p_initial, p_transition):
-
+def get_measurement_log_likelihood(
+    measurements, p_measurement, p_initial, p_transition
+):
     # for each timestep, we have:
     #
     # a "state"   a discrete variable (0, 1, ...)
@@ -30,7 +31,6 @@ def get_measurement_log_likelihood(measurements, p_measurement, p_initial, p_tra
     # "pstate"s.
 
     def get_next_pstate(prev_pstate, measurement):
-
         next_pstate = p_measurement[measurement] * jnp.matmul(prev_pstate, p_transition)
 
         normalization_factor = 1.0 / jnp.sum(next_pstate)
@@ -47,9 +47,8 @@ def get_measurement_log_likelihood(measurements, p_measurement, p_initial, p_tra
     # t = 1, 2, ...
 
     final_pstate, normalization_factors = jax.lax.scan(
-        get_next_pstate,
-        initial_pstate,
-        measurements[1:])
+        get_next_pstate, initial_pstate, measurements[1:]
+    )
 
     # The final likelihood is:
     #
@@ -64,13 +63,14 @@ def get_measurement_log_likelihood(measurements, p_measurement, p_initial, p_tra
     #                = 0.0 - sum(log(normalization_factors))
     #                = - sum(log(normalization_factors))
 
-    log_likelihood = -(jnp.sum(jnp.log(normalization_factors)) + jnp.log(normalization_factor))
+    log_likelihood = -(
+        jnp.sum(jnp.log(normalization_factors)) + jnp.log(normalization_factor)
+    )
 
     return log_likelihood
 
 
 def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
-
     # for each timestep, we have:
     #
     # a "state"   a discrete variable (0, 1, ...)
@@ -97,7 +97,6 @@ def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
     # t = 1, 2, ...
 
     def get_next_log_pstate(prev_log_pstate, measurement):
-
         # prev_log_pstate           (n,)    MAP log probability of previous state
         #
         # log_p_transition          (n, n)  Transpose of log probability
@@ -131,9 +130,8 @@ def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
         return next_log_pstate, best_prev_state_lookup
 
     final_log_pstate, best_prev_state_lookups = jax.lax.scan(
-        get_next_log_pstate,
-        log_initial_pstate,
-        measurements[1:])
+        get_next_log_pstate, log_initial_pstate, measurements[1:]
+    )
 
     # final best state is the argmax of the final log probability
 
@@ -142,10 +140,12 @@ def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
     # all other previous best states can now be traced backwards from there
 
     _, backward_trace = jax.lax.scan(
-        lambda best_state, best_prev_state_lookup: (best_prev_state_lookup[best_state],) * 2,
+        lambda best_state, best_prev_state_lookup: (best_prev_state_lookup[best_state],)
+        * 2,
         final_best_state,
         best_prev_state_lookups,
-        reverse=True)
+        reverse=True,
+    )
 
     # append the final best state to the traced back states
     return jnp.concatenate([backward_trace, jnp.array([final_best_state])])

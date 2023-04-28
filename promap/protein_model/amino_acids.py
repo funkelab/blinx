@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class AminoAcid(Enum):
-    '''Amino acid codes, according to
-    https://en.wikipedia.org/wiki/FASTA_format'''
+    """Amino acid codes, according to
+    https://en.wikipedia.org/wiki/FASTA_format"""
 
     A = 0
     B = 1
