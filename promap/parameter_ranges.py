@@ -1,5 +1,6 @@
-from .parameters import Parameters
 import jax.numpy as jnp
+
+from .parameters import Parameters
 
 
 class ParameterRanges:

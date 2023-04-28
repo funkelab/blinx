@@ -1,5 +1,5 @@
-from scipy.stats import entropy
 import jax.numpy as jnp
+from scipy.stats import entropy
 
 
 def post_process(traces, parameters, likelihoods, hyper_parameters):

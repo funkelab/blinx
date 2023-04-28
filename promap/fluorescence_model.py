@@ -1,7 +1,8 @@
-from .constants import eps
-from jax import random
 import jax
 import jax.numpy as jnp
+from jax import random
+
+from .constants import eps
 
 
 def create_emission_distribution(y, mu, mu_bg, sigma, hyper_parameters):

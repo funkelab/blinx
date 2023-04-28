@@ -1,7 +1,7 @@
-import numpy as np
-import skimage
-import pandas as pd
 import h5py
+import numpy as np
+import pandas as pd
+import skimage
 
 
 def extract_trace(

@@ -1,8 +1,7 @@
-import pytest
-import numpy as np
 import jax.numpy as jnp
-
-from promap.markov_chain import get_optimal_states, get_measurement_log_likelihood
+import numpy as np
+import pytest
+from promap.markov_chain import get_measurement_log_likelihood, get_optimal_states
 
 
 def test_markov_chain(problem_likelihood_solution):

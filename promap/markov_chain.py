@@ -1,6 +1,7 @@
-from .constants import eps
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
+
+from .constants import eps
 
 
 def get_steady_state(transition_matrix):

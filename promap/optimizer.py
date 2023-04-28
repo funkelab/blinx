@@ -1,7 +1,8 @@
 from collections import namedtuple
-from .parameters import Parameters
+
 import optax
 
+from .parameters import Parameters
 
 Optimizer = namedtuple("Optimizer", ["init", "step"])
 

@@ -1,4 +1,5 @@
 import logging
+
 import numpy as np
 import scipy.stats
 
@@ -9,9 +10,9 @@ class FluorescenceModel:
     """Simple fluorescence model for amino acid counts in proteins (y), dye
     activity (z), and fluorescence measurements per dye (x)::
 
-        y_i ∈ ℕ (count of amino acid i)
-        z_i ∈ ℕ (number of active dyes for amino acid i)
-        x_i ∈ ℝ (total fluorescence of active dyes for amino acid i)
+        y_i ∈ N (count of amino acid i)
+        z_i ∈ N (number of active dyes for amino acid i)
+        x_i ∈ R (total fluorescence of active dyes for amino acid i)
 
         # independent per dye
         p(x|y) = Σ_i p(x_i|y_i)
@@ -23,7 +24,7 @@ class FluorescenceModel:
         p(z_i|y_i) ~ B(y_i, p_on)
 
         # fluorescence follows log-normal distribution
-        p(x*_i|z_i) = sqrt(2πσ_i²)^-1 exp[ -(x*_i - μ_i - ln z_i + q_z_i)² ]
+        p(x*_i|z_i) = sqrt(2πo_i²)^-1 exp[ -(x*_i - μ_i - ln z_i + q_z_i)² ]
 
     Args:
 
@@ -33,10 +34,10 @@ class FluorescenceModel:
         μ:
             Mean log intensity of a dye.
 
-        σ:
+        o:
             Standard deviation of log intensity of a dye.
 
-        σ_background:
+        o_background:
             Standard deviation of log intensity of background (mean is assumed
             to be 0).
 
@@ -114,7 +115,7 @@ class FluorescenceModel:
         y = np.array(y)
 
         if num_samples > 1:
-            size = (num_samples,) + y.shape
+            size = (num_samples, *y.shape)
         else:
             size = y.shape
 

@@ -2,14 +2,14 @@ import jax
 import jax.numpy as jnp
 
 from .hyper_parameters import HyperParameters
+from .optimizer import create_optimizer
 from .parameter_ranges import ParameterRanges
 from .parameters import Parameters
 
 # FIXME: post_process should be renamed and find a new home
 from .post_process import post_process as find_most_likely_y
-from .utils import find_local_maxima
 from .trace_model import get_trace_log_likelihood
-from .optimizer import create_optimizer
+from .utils import find_local_maxima
 
 
 def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):

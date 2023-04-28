@@ -1,14 +1,16 @@
+import time
+
+import jax
+import jax.numpy as jnp
+from jax import random
+from scipy.special import comb
+
 from .fluorescence_model import (
     create_emission_distribution,
     discretize_trace,
     sample_x_given_z,
 )
-from .markov_chain import get_steady_state, get_measurement_log_likelihood
-from jax import random
-from scipy.special import comb
-import jax
-import jax.numpy as jnp
-import time
+from .markov_chain import get_measurement_log_likelihood, get_steady_state
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):

@@ -1,5 +1,5 @@
-from promap import ParameterRanges
 import numpy as np
+from promap import ParameterRanges
 
 
 def test_to_parameters():

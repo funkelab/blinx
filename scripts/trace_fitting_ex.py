@@ -1,8 +1,9 @@
-from promap.trace_model import TraceModel
-from promap.fluorescence_model import EmissionParams
-from promap import fit
-import matplotlib.pyplot as plt
 import time
+
+import matplotlib.pyplot as plt
+from promap import fit
+from promap.fluorescence_model import EmissionParams
+from promap.trace_model import TraceModel
 
 if __name__ == "__main__":
     # generate a test trace

@@ -1,6 +1,6 @@
+import pytest
 from promap.parameters import Parameters
 from promap.trace_model import generate_trace
-import pytest
 
 
 @pytest.fixture(scope="module")

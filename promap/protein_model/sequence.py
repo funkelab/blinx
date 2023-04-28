@@ -1,5 +1,6 @@
-from .amino_acids import AminoAcid
 import numpy as np
+
+from .amino_acids import AminoAcid
 
 
 def count_amino_acids(sequence):

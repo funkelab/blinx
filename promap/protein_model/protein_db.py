@@ -1,9 +1,11 @@
-from .amino_acids import AminoAcid
-from .sequence import count_amino_acids
 import json
 import logging
-import numpy as np
 import time
+
+import numpy as np
+
+from .amino_acids import AminoAcid
+from .sequence import count_amino_acids
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ class ProteinDb:
         logger.info("Reading protein sequence JSON...")
         start = time.time()
 
-        with open(filename, "r") as f:
+        with open(filename) as f:
             protein_db = json.load(f)
 
         self.proteins = protein_db["proteins"]
