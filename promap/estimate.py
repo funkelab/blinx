@@ -137,17 +137,11 @@ def estimate_parameters(
 
     # get initial guesses for each trace, given the parameter ranges
 
-    # TODO: should be batched
-    parameter_guesses = jax.vmap(
-        get_initial_parameter_guesses,
-        in_axes=(0, None, None, None))(
-            traces,
-            y,
-            parameter_ranges,
-            hyper_parameters)
-
-    num_traces = parameter_guesses.shape[0]
-    num_guesses = parameter_guesses.shape[1]
+    parameter_guesses = get_initial_parameter_guesses(
+        traces,
+        y,
+        parameter_ranges,
+        hyper_parameters)
 
     # create the objective function for the given y, as well as its gradient
     # function
@@ -181,6 +175,8 @@ def estimate_parameters(
     )
 
     # initial conditions
+    num_traces = traces.shape[0]
+    num_guesses = hyper_parameters.num_guesses
     parameters = parameter_guesses
     is_done = jnp.zeros((num_traces, num_guesses), dtype='bool')
 
@@ -206,10 +202,12 @@ def estimate_parameters(
 
     best_guesses = jnp.argmin(log_likelihoods, axis=1)
 
-    best_parameters = jnp.array([
-        parameters[t, i]
-        for t, i in enumerate(best_guesses)
-    ])
+    best_parameters = [
+        Parameters(*(
+            p[t, best_guesses[t]] for p in parameters
+        ))
+        for t in range(num_traces)
+    ]
     best_log_likelihoods = jnp.array([
         log_likelihoods[t, i]
         for t, i in enumerate(best_guesses)
@@ -219,7 +217,7 @@ def estimate_parameters(
 
 
 def get_initial_parameter_guesses(
-        trace,
+        traces,
         y,
         parameter_ranges,
         hyper_parameters):
@@ -230,31 +228,54 @@ def get_initial_parameter_guesses(
     Returns: array of parameters of size 5 x num guesses
 
     '''
+    num_traces = traces.shape[0]
     num_guesses = hyper_parameters.num_guesses
 
     parameters = parameter_ranges.to_parameters()
 
-    # calculate log likelihood for each combination of parameters
-    log_likelihoods = jax.vmap(
-        get_trace_log_likelihood,
-        in_axes=(None, None, 0, None))(
-            trace,
-            y,
-            parameters,
-            hyper_parameters)
+    # vmap over parameters
+    log_likelihood_over_parameters = jax.vmap(
+        lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters),
+        in_axes=(None, 0)
+    )
 
-    # reshape parameters and log likelihoods so they are "continuous" along
-    # each dimension
+    # vmap over traces
+    log_likelihoods = jax.vmap(
+        log_likelihood_over_parameters,
+        in_axes=(0, None))(
+            traces,
+            parameters)
+
+    # reshape parameters so they are "continuous" along each dimension
     parameters = Parameters(*(
         p.reshape(parameter_ranges.num_values())
         for p in parameters
     ))
-    log_likelihoods = log_likelihoods.reshape(parameter_ranges.num_values())
 
-    # find locations where parameters maximize log likelihoods
-    min_indices = find_local_maxima(log_likelihoods, num_guesses)
+    # The following calls into non-JAX code and should therefore avoid vmap (or
+    # any other transformation like jit or grad). That's why we use a for loop
+    # to loop over traces instead of a vmap.
+    guesses = []
+    for i in range(num_traces):
 
-    return Parameters(*(p[min_indices] for p in parameters))
+        # reshape likelihodds to line up with parameters (so they are
+        # "continuous" along each dimension)
+        trace_log_likelihoods = log_likelihoods[i].reshape(parameter_ranges.num_values())
+
+        # find locations where parameters maximize log likelihoods
+        min_indices = find_local_maxima(trace_log_likelihoods, num_guesses)
+
+        guesses.append(Parameters(*(p[min_indices] for p in parameters)))
+
+    # all guesses are stored in 'guesses', the following stacks them together
+    # as if we vmap'ed over traces:
+
+    guesses = Parameters(*(
+        jnp.stack([guesses[i][p] for i in range(num_traces)])
+        for p in range(len(parameters))
+    ))
+
+    return guesses
 
 
 def optimize_parameters(
