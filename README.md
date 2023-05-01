@@ -12,7 +12,7 @@ conda create -n blinx python cudatoolkit=11.4 cudatoolkit-dev=11.4 cudnn=8.2 -c 
 conda activate blinx
 pip install 'jax==0.4.1' 'jaxlib==0.4.1+cuda11.cudnn82' -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-# install ProMap
+# install blinx
 git clone https://github.com/funkelab/blinx
 cd blinx
 pip install .
