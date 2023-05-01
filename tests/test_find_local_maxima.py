@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 import numpy as np
-from promap.utils import find_local_maxima
+from blinx.utils import find_local_maxima
 
 
 def test_single_maximum():

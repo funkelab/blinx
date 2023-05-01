@@ -1,5 +1,5 @@
 import numpy as np
-from promap import ParameterRanges
+from blinx import ParameterRanges
 
 
 def test_to_parameters():

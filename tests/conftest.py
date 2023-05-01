@@ -1,6 +1,6 @@
 import pytest
-from promap.parameters import Parameters
-from promap.trace_model import generate_trace
+from blinx.parameters import Parameters
+from blinx.trace_model import generate_trace
 
 
 @pytest.fixture(scope="module")

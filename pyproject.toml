@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 # https://peps.python.org/pep-0621/
 [project]
-name = "promap"
+name = "blinx"
 description = "Counting of binding sites in fluorescence traces"
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,16 +22,16 @@ dev = ["pre-commit", "pytest", "pytest-cov", "ruff", "twine", "build"]
 test = ["pytest", "pytest-cov"]
 
 [project.urls]
-homepage = "https://github.com/funkelab/promap"
+homepage = "https://github.com/funkelab/blinx"
 
 # https://hatch.pypa.io/latest/version/
 [tool.hatch.version]
-path = "promap/__init__.py"
+path = "blinx/__init__.py"
 
 # https://beta.ruff.rs/docs
 [tool.ruff]
 target-version = "py38"
-src = ["promap"]
+src = ["blinx"]
 select = [
     "F",   # pyflakes
     "E",   # pycodestyle
@@ -50,7 +50,7 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-files = "promap"
+files = "blinx"
 strict = false
 allow_untyped_defs = true
 # allow_untyped_calls = true

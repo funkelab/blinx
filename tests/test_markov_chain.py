@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from promap.markov_chain import (
+from blinx.markov_chain import (
     get_measurement_log_likelihood,
     get_optimal_states,
     get_steady_state,

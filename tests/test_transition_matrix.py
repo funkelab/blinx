@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from promap.trace_model import create_transition_matrix
+from blinx.trace_model import create_transition_matrix
 from scipy import stats
 
 

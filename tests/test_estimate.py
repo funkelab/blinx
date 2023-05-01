@@ -1,6 +1,6 @@
 import jax.numpy as jnp
-from promap import HyperParameters, ParameterRanges
-from promap.estimate import estimate_parameters, get_initial_parameter_guesses
+from blinx import HyperParameters, ParameterRanges
+from blinx.estimate import estimate_parameters, get_initial_parameter_guesses
 
 
 def test_parameter_guesses(trace_with_groundtruth):

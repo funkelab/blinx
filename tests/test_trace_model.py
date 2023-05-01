@@ -1,7 +1,7 @@
 import jax
 import numpy as np
-from promap import HyperParameters
-from promap.trace_model import get_trace_log_likelihood
+from blinx import HyperParameters
+from blinx.trace_model import get_trace_log_likelihood
 
 
 def test_gradients(trace_with_groundtruth):
