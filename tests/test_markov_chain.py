@@ -1,7 +1,11 @@
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from promap.markov_chain import get_measurement_log_likelihood, get_optimal_states
+from promap.markov_chain import (
+    get_measurement_log_likelihood,
+    get_optimal_states,
+    get_steady_state,
+)
 
 
 def test_markov_chain(problem_likelihood_solution):
@@ -20,7 +24,47 @@ def test_markov_chain(problem_likelihood_solution):
         np.testing.assert_equal(np.asarray(states), np.asarray(solution))
 
 
-@pytest.fixture(params=["uniform", "no_transition", "random"])
+def test_stationary_distribution(problem_likelihood_solution):
+    inference_problem, _, _ = problem_likelihood_solution
+    (_, _, _, p_transition) = inference_problem
+
+    numerical_steady_state = get_steady_state(p_transition)
+    numerical_steady_state = np.asarray(numerical_steady_state)
+
+    analytical_steady_state = get_analytical_steady_state(p_transition)
+
+    np.testing.assert_allclose(
+        numerical_steady_state, analytical_steady_state, rtol=1e-5
+    )
+
+    np.testing.assert_allclose(
+        numerical_steady_state,
+        np.matmul(numerical_steady_state, p_transition),
+        rtol=1e-5,
+    )
+
+
+def get_analytical_steady_state(transition_matrix):
+    # The stationary distribution is a left eigenvector of the transition
+    # matrix with eigenvalue 1, i.e.,
+    #
+    #   p * T = p,
+    #
+    # where p is the stationary distribution and T is the transition matrix.
+
+    # the transpose computes the left eigenvalues/vectors
+    eigen_values, eigen_vectors = np.linalg.eig(np.asarray(transition_matrix).T)
+
+    # find the eigenvalue closest to one
+    index = np.argmin(np.abs(eigen_values - 1.0))
+
+    stationary_distribution = eigen_vectors[:, index]
+    stationary_distribution /= np.sum(stationary_distribution)
+
+    return jnp.asarray(stationary_distribution)
+
+
+@pytest.fixture(params=["uniform", "almost_no_transition", "random"])
 def problem_likelihood_solution(request):
     if request.param == "random":
         n = 3  # number of states
@@ -54,9 +98,9 @@ def problem_likelihood_solution(request):
         p_transition = jnp.array([[0.5, 0.5], [0.5, 0.5]])
         solution = [1, 0, 1, 0, 0]
 
-    elif request.param == "no_transition":
+    elif request.param == "almost_no_transition":
         p_initial = jnp.array([0.5, 0.5])
-        p_transition = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+        p_transition = jnp.array([[0.9, 0.1], [0.1, 0.9]])
         solution = [0, 0, 0, 0, 0]
 
     elif request.param == "random":
