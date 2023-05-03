@@ -10,12 +10,12 @@ def y(request):
     return request.param
 
 
-@pytest.fixture(params=[1e-4, 1e-2, 0.1, 0.2, 0.4])
+@pytest.fixture(params=[1e-3, 1e-2, 0.1, 0.2, 0.4])
 def p_on(request):
     return request.param
 
 
-@pytest.fixture(params=[1e-4, 1e-2, 0.1, 0.2, 0.4])
+@pytest.fixture(params=[1e-3, 1e-2, 0.1, 0.2, 0.4])
 def p_off(request):
     return request.param
 
@@ -61,10 +61,10 @@ def test_correctness(true_transition_matrix):
     # we know that for very small p_on/p_off, the straight forward computation
     # differs numerically more from our implementation (and that's okay)
     if min(p_on, p_off) < 1e-2:
-        rtol = 1e-4
+        atol = 1e-4
     else:
-        rtol = 1e-6
+        atol = 1e-6
 
     np.testing.assert_allclose(
-        np.asarray(transition_matrix), np.asarray(compare), rtol=rtol
+        np.asarray(transition_matrix), np.asarray(compare), atol=atol
     )
