@@ -61,6 +61,18 @@ def test_multiple_maxima():
     np.testing.assert_equal(np.asarray(maximum_indices), np.asarray(([3, 9], [4, 9])))
 
 
+def test_multiple_identical_maxima():
+    a = np.zeros((10, 10), dtype=np.float32)
+    a[3, 4] = 2.0
+    a[9, 9] = 2.0
+    a = jnp.array(a)
+
+    maximum_indices = find_local_maxima(a)
+
+    assert len(maximum_indices[0]) == 2
+    np.testing.assert_equal(np.asarray(maximum_indices), np.asarray(([3, 9], [4, 9])))
+
+
 def test_no_maximum():
     a = np.zeros((10, 10), dtype=np.float32)
     a = jnp.array(a)
@@ -81,4 +93,17 @@ def test_multi_dimensional():
     np.testing.assert_equal(
         np.asarray(maximum_indices),
         np.asarray(([5], [5], [4], [4], [3], [3], [2], [2], [1])),
+    )
+
+
+def test_single_dimensional():
+    a = np.zeros((1, 10, 1, 1, 1), dtype=np.float32)
+    a[0, 5, 0, 0, 0] = 2.0
+    a = jnp.asarray(a)
+
+    maximum_indices = find_local_maxima(a)
+    assert len(maximum_indices[0]) == 1
+    np.testing.assert_equal(
+        np.asarray(maximum_indices),
+        np.asarray(([0], [5], [0], [0], [0])),
     )
