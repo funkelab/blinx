@@ -152,7 +152,7 @@ def test_sigma_inference(trace_with_groundtruth_noisy):
     hyper_parameters = HyperParameters()
     hyper_parameters.max_x = 2 * y * parameters.mu
     hyper_parameters.num_guesses = 1
-    hyper_parameters.step_sizes = Parameters(mu=0, mu_bg=0, sigma=1e-5, p_on=0, p_off=0)
+    hyper_parameters.step_sizes = Parameters(mu=0, mu_bg=0, sigma=1e-8, p_on=0, p_off=0)
     hyper_parameters.epoch_length = 1000
 
     # create parameter ranges that contain the true values
