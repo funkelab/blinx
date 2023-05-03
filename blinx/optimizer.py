@@ -16,9 +16,10 @@ def create_optimizer(value_grad_func, hyper_parameters):
 
         value, gradients = value_grad_func(trace, parameters)
 
+
         # update parameters (subtract to maximize)
         parameters = jax.tree_util.tree_map(
-            lambda p, s, g: p - s * g, parameters, step_sizes, gradients
+            lambda p, s, g: p + s * g, parameters, step_sizes, gradients
         )
 
         # return updated parameters, current value, and optimizer state
