@@ -28,12 +28,12 @@ def find_local_maxima(matrix, num_maxima=None):
     # get all maximum values, sorted
     values, indices = np.unique(maxima, return_index=True)
 
-    #assert values[0] == -np.inf
+    assert values[0] == -np.inf
 
     # first index should point to -np.inf, drop it
-    #indices = indices[1:]
+    indices = indices[1:]
     
-    values, indices = np.unique(np.isfinite(maxima), return_index=True)
+    #values, indices = np.unique(np.isfinite(maxima), return_index=True)
 
     # retain only last num_maxima values
     if len(indices) > num_maxima:
