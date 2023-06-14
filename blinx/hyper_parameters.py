@@ -32,6 +32,7 @@ class HyperParameters:
         num_guesses=5,
         epoch_length=1000,
         is_done_limit=1e-5,
+        is_done_window=10,
         step_sizes=Parameters(mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3),
         distribution_threshold=1e-1,
         max_x=None,
@@ -42,6 +43,7 @@ class HyperParameters:
         self.num_guesses = num_guesses
         self.epoch_length = epoch_length
         self.is_done_limit = is_done_limit
+        self.is_done_window = is_done_window
         self.step_sizes = step_sizes
         self.distribution_threshold = distribution_threshold
         self.max_x = max_x

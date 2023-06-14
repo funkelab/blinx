@@ -1,5 +1,8 @@
+import collections
+
 import jax
 import jax.numpy as jnp
+from tqdm import tqdm
 
 from .hyper_parameters import HyperParameters
 from .optimizer import create_optimizer
@@ -112,11 +115,10 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     """
 
     # traces: (n, t)
-    # parameter_guesses: (n, g, k)
+    # parameters: (n, g, k)
     # optimizer_states: (n, g, ...)
     # parameters: (n, g, k)
     # log_likelihoods: (n, g)
-    # is_done: (n, g)
     #
     # t = length of trace
     # n = number of traces
@@ -125,7 +127,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     # get initial guesses for each trace, given the parameter ranges
 
-    parameter_guesses = get_initial_parameter_guesses(
+    parameters = get_initial_parameter_guesses(
         traces, y, parameter_ranges, hyper_parameters
     )
 
@@ -142,40 +144,23 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     # create optimizer states for each trace and parameter guess
 
-    optimizer_states = jax.vmap(jax.vmap(optimizer.init))(parameter_guesses)
+    optimizer_states = jax.vmap(jax.vmap(optimizer.init))(parameters)
 
-    # optimize each trace and parameter guess in parallel until all of them
-    # converged
+    vmap_parameters = jax.vmap(optimizer.step, in_axes=(None, 0, 0))
+    vmap_traces = jax.vmap(vmap_parameters)
+    optimizer_step = jax.jit(vmap_traces)
 
-    # fit_epoch(traces, parameters, optimizer_states)
-    fit_epoch = jax.vmap(  # vmap over traces
-        jax.vmap(  # vmap over parameters
-            lambda t, p, os: optimize_parameters(t, p, os, optimizer, hyper_parameters),
-            in_axes=(None, 0, 0),
-        )
-    )
+    log_likelihoods_history = collections.deque(maxlen=hyper_parameters.is_done_window)
 
-    # initial conditions
-    num_traces = traces.shape[0]
-    num_guesses = hyper_parameters.num_guesses
-    parameters = parameter_guesses
-    is_done = jnp.zeros((num_traces, num_guesses), dtype="bool")
-
-    while not jnp.all(is_done):
-        # optimize each trace and guess in parallel for one epoch
-
-        # FIXME: this does not remember log likelihoods from earlier epochs
-        parameters, optimizer_states, log_likelihoods, is_done = fit_epoch(
+    for i in tqdm(range(hyper_parameters.epoch_length)):
+        parameters, log_likelihoods, optimizer_states = optimizer_step(
             traces, parameters, optimizer_states
         )
 
-        print(f"fitting y = {y}")
+        log_likelihoods_history.append(log_likelihoods)
 
-        print("log likelihoods:")
-        print(log_likelihoods)
-
-        print("is_done:")
-        print(is_done)
+        if is_done(log_likelihoods_history, hyper_parameters):
+            break
 
     # for each trace, keep the best parameter/log likelihood
 
@@ -183,11 +168,13 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     best_parameters = [
         Parameters(*(p[t, best_guesses[t]] for p in parameters))
-        for t in range(num_traces)
+        for t in range(traces.shape[0])
     ]
     best_log_likelihoods = jnp.array(
         [log_likelihoods[t, i] for t, i in enumerate(best_guesses)]
     )
+
+    print(best_log_likelihoods)
 
     return best_parameters, best_log_likelihoods
 
@@ -249,60 +236,30 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
     return guesses
 
 
-def optimize_parameters(
-    trace, parameters, optimizer_state, optimizer, hyper_parameters
-):
-    """Fit a single trace and parameter pair, using the given optimizer.
-
-    Returns:
-
-        A tuple `(parameters, optimizer_state, log_likelihood, is_done)`
-    """
-
-    # call optimizer.step() num_iterations times, collect all log likelihoods
-    # along the way
-
-    # the following is a little helper to do that with jax.scan:
-    def step(carry, _):
-        parameters, optimizer_state = carry
-        parameters, log_likelihood, optimizer_state = optimizer.step(
-            trace, parameters, optimizer_state
-        )
-        return (parameters, optimizer_state), log_likelihood
-
-    (parameters, optimizer_state), log_likelihoods = jax.lax.scan(
-        step,
-        (parameters, optimizer_state),  # carry init
-        [],  # x to scan over (nothing in our case)
-        length=hyper_parameters.epoch_length,
-    )  # number of scan steps
-
-    # mark as done if the most recent log likelihoods do not differ by a lot
-    is_done = check_if_converged(log_likelihoods, hyper_parameters.is_done_limit)
-
-    return parameters, optimizer_state, log_likelihoods[-1], is_done
-
-
-def check_if_converged(log_likelihoods, limit):
+def is_done(log_likelihoods_history, hyper_parameters):
     """
     Input: an array of log likelihoods shape epoch_length
 
     output: bool
     """
 
+    if len(log_likelihoods_history) < hyper_parameters.is_done_window:
+        return False
+
     # option_1
     # measures average percent change over last few cycles
 
-    most_recent = log_likelihoods[-10:]
-    mean_values = jnp.mean(most_recent)
-    mean_improvements = jnp.mean(jnp.diff(most_recent))
+    log_likelihoods_history = jnp.array(log_likelihoods_history)
 
-    percent_improve = jnp.divide(mean_improvements, mean_values)
+    mean_values = jnp.abs(jnp.mean(log_likelihoods_history))
+    mean_delta = jnp.abs(jnp.mean(jnp.diff(log_likelihoods_history, axis=0)))
 
-    done_improve = percent_improve < limit
+    percent_improve = mean_delta / mean_values
+
+    done_improve = percent_improve < hyper_parameters.is_done_limit
 
     # Check if nan and return true if so
     is_nan = jnp.isnan(percent_improve)
-    is_done = jnp.logical_or(done_improve, is_nan)
+    converged = jnp.logical_or(done_improve, is_nan)
 
-    return is_done
+    return jnp.all(converged)
