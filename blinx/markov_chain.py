@@ -21,7 +21,7 @@ def get_steady_state(transition_matrix):
 
 
 def get_measurement_log_likelihood(
-    measurements, p_measurement, p_initial, p_transition
+    p_measurement, p_initial, p_transition
 ):
     # for each timestep, we have:
     #
@@ -31,8 +31,10 @@ def get_measurement_log_likelihood(
     # The following implements the forward algorithm, which only considers
     # "pstate"s.
 
-    def get_next_pstate(prev_pstate, measurement):
-        next_pstate = p_measurement[measurement] * jnp.matmul(prev_pstate, p_transition)
+    # p_measurement: (t, y + 1)
+
+    def get_next_pstate(prev_pstate, p_measurement):
+        next_pstate = p_measurement * jnp.matmul(prev_pstate, p_transition)
 
         normalization_factor = 1.0 / jnp.sum(next_pstate)
         next_pstate = next_pstate * normalization_factor
@@ -41,14 +43,14 @@ def get_measurement_log_likelihood(
 
     # t = 0
 
-    initial_pstate = p_initial * p_measurement[measurements[0]]
+    initial_pstate = p_initial * p_measurement[0]
     normalization_factor = 1.0 / jnp.sum(initial_pstate)
     initial_pstate = initial_pstate * normalization_factor
 
     # t = 1, 2, ...
 
     final_pstate, normalization_factors = jax.lax.scan(
-        get_next_pstate, initial_pstate, measurements[1:]
+        get_next_pstate, initial_pstate, p_measurement[1:]
     )
 
     # The final likelihood is:

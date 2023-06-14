@@ -6,8 +6,7 @@ from jax import random
 from scipy.special import comb
 
 from .fluorescence_model import (
-    create_emission_distribution,
-    discretize_trace,
+    p_x_given_z,
     sample_x_given_z,
 )
 from .markov_chain import get_measurement_log_likelihood, get_steady_state
@@ -24,14 +23,30 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     p_on = parameters.p_on
     p_off = parameters.p_off
 
+    zs = jnp.arange(0, y + 1)
+
+    max_x = hyper_parameters.max_x
+    num_bins = hyper_parameters.num_x_bins
+    bin_width = max_x / num_bins
+    x_left = (trace // bin_width) * bin_width
+    x_right = x_left + bin_width
+
     p_transition = create_transition_matrix(y, p_on, p_off)
     p_initial = get_steady_state(p_transition)
-    p_emission = create_emission_distribution(y, mu, mu_bg, sigma, hyper_parameters)
-
-    discrete_trace = discretize_trace(trace, hyper_parameters)
+    p_measurement = jax.vmap(
+        p_x_given_z,
+        in_axes=(None, None, 0, None, None, None, None),
+    )(
+        x_left,
+        x_right,
+        zs,
+        mu, mu_bg,
+        sigma,
+        hyper_parameters
+    )
 
     return get_measurement_log_likelihood(
-        discrete_trace, p_emission, p_initial, p_transition
+        p_measurement.T, p_initial, p_transition
     )
 
 
