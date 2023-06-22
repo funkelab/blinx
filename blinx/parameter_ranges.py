@@ -10,26 +10,46 @@ class ParameterRanges:
 
         mu_range (tuple):
 
-            The min and max value of `mu` (the intensity increment per
-            fluorophore).
+            The min and max mean intensity values of a single emitter
+            to grid search over
 
         mu_bg_range (tuple):
 
-            The min and max value of `mu_bg` (the background intensity).
+            The min and max background intensity values
+            to grid search over
+
+        sigma_range (tuple):
+
+            The min and max values of the std of the intensity of a single emitter
+            to grid search over
 
         p_on_range (tuple):
+
+            the min and max p_on values to grid search over
+
         p_off_range (tuple):
 
-            The min and max value of `p_on` and `p_off`. Either one can be
-            `None`, in which case the default of 1e-4 and 1 will be used for
-            the min and max, respectively.
+            the min and max p_on values to grid search over
 
         mu_step (int):
+
+            The number of values to grid search over for :class:'Parameters' 'mu'
+
+        mu_bg_step (int):
+
+            The number of values to grid search over for :class:'Parameters' 'mu_bg'
+
+        sigma_step (int):
+
+            The number of values to grid search over for :class:'Parameters' 'sigma'
+
         p_on_step (int):
+
+            The number of values to grid search over for :class:'Parameters' 'p_on'
+
         p_off_step (int):
 
-            The number of values to explore between the corrosponding min and
-            max values.
+            The number of values to grid search over for :class:'Parameters' 'p_on'
     """
 
     def __init__(
