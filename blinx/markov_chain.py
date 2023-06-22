@@ -5,6 +5,24 @@ from .constants import eps
 
 
 def get_steady_state(transition_matrix):
+    """Find the steady state distribution of hidden states.
+
+    - This distribution can be used as the inital probabilites when calculating the likelihood
+
+    Args:
+
+        transition_matrix (array):
+
+            matrix containing the transition probabilities from state 'i' to state 'j',
+            (shape '(m, m)') where 'm' is the number of hidden states
+
+    Returns:
+
+        steady_state (array):
+
+            array (shape '(n)') containing the steady state probabilites of 
+            the system being in each hidden state
+    """
     num_states = transition_matrix.shape[0]
 
     # initialize with a uniform distribution
@@ -20,9 +38,33 @@ def get_steady_state(transition_matrix):
     return steady_state
 
 
-def get_measurement_log_likelihood(
-    p_measurement, p_initial, p_transition
-):
+def get_measurement_log_likelihood(p_measurement, p_initial, p_transition):
+    """Get the likelihood of observing a given sequence of measurements.
+
+    - An Implimentation of the forward algorithm
+
+    Args:
+
+        p_measurement (array):
+
+           The probabilites of observing each measurement individually, given the underlying hidden state.
+           (shape '(m, t)') where 'm' in the number of hidden states, and t is the number of observations
+
+        p_initial (array):
+
+            The steady_state probability of observing each hidden state, (shape '(m)')
+
+        p_transition (array):
+
+            the probability of transitioning from hidden state 'i' at time t-1 to hidden state 'j' at time t,
+            (shape '(m, m)')
+
+    Returns:
+
+        log_likelihood (float):
+
+    """
+
     # for each timestep, we have:
     #
     # a "state"   a discrete variable (0, 1, ...)
@@ -34,6 +76,8 @@ def get_measurement_log_likelihood(
     # p_measurement: (t, y + 1)
 
     def get_next_pstate(prev_pstate, p_measurement):
+        # helper function for lax.scan
+
         next_pstate = p_measurement * jnp.matmul(prev_pstate, p_transition)
 
         normalization_factor = 1.0 / jnp.sum(next_pstate)
@@ -74,6 +118,37 @@ def get_measurement_log_likelihood(
 
 
 def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
+    """Reconstruct the most likely hiddens states at each timepoint for a sequence of measurements.
+
+    - An implimentation of the Viterbi algorithm
+
+    Args:
+
+        measurements (array):
+
+            Ordered sequence of observations (shape '(t)'), where 't' is the number of observations
+
+        p_measurement (array):
+
+           The probabilites of observing each measurement individually, given the underlying hidden state,
+           (shape '(m, t)') where 'm' in the number of hidden states, and t is the number of observations
+
+        p_initial (array):
+
+            The steady_state probability of observing each hidden state, (shape '(m)')
+
+        p_transition (array):
+
+            the probability of transitioning from hidden state 'i' at time t-1 to hidden state 'j' at time t,
+            (shape '(m, m)')
+
+    Returns:
+
+        optimal_sequence (array):
+
+            ordered sequence of hidden states (shape '(t)')
+
+    """
     # for each timestep, we have:
     #
     # a "state"   a discrete variable (0, 1, ...)
