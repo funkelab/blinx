@@ -1,7 +1,0 @@
-h5py
-jax
-numpy
-optax
-pandas
-scikit-image
-scipy
