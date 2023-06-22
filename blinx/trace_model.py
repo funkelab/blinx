@@ -14,7 +14,31 @@ from .markov_chain import get_measurement_log_likelihood, get_steady_state
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     """
-    TODO: add a docstring
+    Get the log_likelihood of a single set of parameters for a single trace.
+
+    Args:
+        trace (tensor of shape '(n)'):
+
+            a sequence of intensity observations
+
+        y (int):
+
+            the total number of fluorescent emitters
+
+        parameters (:class: 'Parameters'):
+
+            set of fluorescence and kinetic model parameters
+
+        hyper_parameters (:class:`HyperParameters`, optional):
+
+            The hyper-parameters used for the maximum likelihood estimation.
+
+    Returns:
+
+        log_likelihood (float):
+
+            log_likelihood of observing 'trace' given :class:'Parameters'
+
     """
 
     mu = parameters.mu
@@ -24,6 +48,9 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     p_off = parameters.p_off
 
     zs = jnp.arange(0, y + 1)
+
+    # Discretize the trace into bins
+    # so that probabilities can be obtained from the cdf
 
     max_x = hyper_parameters.max_x
     num_bins = hyper_parameters.num_x_bins
@@ -36,28 +63,19 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     p_measurement = jax.vmap(
         p_x_given_z,
         in_axes=(None, None, 0, None, None, None, None),
-    )(
-        x_left,
-        x_right,
-        zs,
-        mu, mu_bg,
-        sigma,
-        hyper_parameters
-    )
+    )(x_left, x_right, zs, mu, mu_bg, sigma, hyper_parameters)
 
-    return get_measurement_log_likelihood(
-        p_measurement.T, p_initial, p_transition
-    )
+    return get_measurement_log_likelihood(p_measurement.T, p_initial, p_transition)
 
 
 def generate_trace(y, parameters, num_frames, seed=None):
-    """generate a synthetic intensity trace
+    """Create a simulated intensity trace.
 
     Args:
         y (int):
             - the total number of fluorescent emitters
 
-        parameters (array):
+        parameters (:class:'Parameters'):
             - the parameters of the fluoresent and trace model
 
         num_frames (int):
@@ -67,13 +85,12 @@ def generate_trace(y, parameters, num_frames, seed=None):
             - random seed for the jax psudo rendom number generator
 
     Returns:
-        x_trace (array):
+        trace (array):
             - an ordered array of length num_frames containing intensity
                 values for each frame
 
         states (array):
-            - array the same shape as x_trace, showing the hiddens state
-                "z" for each frame
+            - array the same shape as x_trace, containing the number of 'on' emitters in each frame
     """
 
     if seed is None:
@@ -110,12 +127,14 @@ def generate_trace(y, parameters, num_frames, seed=None):
 
     key = random.PRNGKey(seed)
     key, subkey = random.split(key)
-    x_trace = sample_x_given_z(zs, mu, mu_bg, sigma, key)
+    trace = sample_x_given_z(zs, mu, mu_bg, sigma, key)
 
-    return x_trace[100:, 0], zs[100:]
+    return trace[100:, 0], zs[100:]
 
 
 def sample_next_z(z, p_transition, key):
+    # A helper function for jax.lax.scan in generate_trace
+
     p_tr = jnp.log(p_transition[z, :])
     z = random.categorical(key, p_tr)
 
@@ -139,9 +158,11 @@ def create_transition_matrix(y, p_on, p_off):
 
     Returns:
 
-        A matrix of transition probabilities of shape ``(y + 1, y + 1)``, with
-        element ``i, j`` being the probability that the number of active
-        elements changes from ``i`` to ``j``.
+        tranistion_matrix (array):
+
+            A matrix of transition probabilities of shape ``(y + 1, y + 1)``, with
+            element ``i, j`` being the probability that the number of active
+            elements changes from ``i`` to ``j``.
     """
 
     # TODO: this can be cached for larger y (max_y)
@@ -183,9 +204,11 @@ def create_comb_matrix(y, slanted=False):
 
     Returns:
 
-        A matrix of n-choose-k values of shape ``(y + 1, y + 1)``, such that
-        the element at position ``i, j`` is the number of ways to select ``j``
-        elements from ``i`` elements.
+        combination_matrix (array):
+
+            A matrix of n-choose-k values of shape ``(y + 1, y + 1)``, such that
+            the element at position ``i, j`` is the number of ways to select ``j``
+            elements from ``i`` elements.
     """
 
     end_i = y + 1
@@ -221,9 +244,11 @@ def create_prob_matrix(y, p, slanted=False):
 
     Returns:
 
-        A matrix of probabilities of shape ``(y + 1, y + 1)``, such that the
-        element at position ``i, j`` is the probability to flip ``j`` elements
-        out of ``i`` elements, if the probability for a single flip is ``p``.
+        probability_matrix (array):
+
+            A matrix of probabilities of shape ``(y + 1, y + 1)``, such that the
+            element at position ``i, j`` is the probability to flip ``j`` elements
+            out of ``i`` elements, if the probability for a single flip is ``p``.
     """
 
     i_indices = jnp.arange(0, y + 1)
