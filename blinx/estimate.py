@@ -30,8 +30,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
 
         parameter_ranges (:class:`ParameterRanges`, optional):
 
-            The parameter ranges to consider for the fluorescence and trace
-            model.
+            The fitting bounds for each parameter to be optimized
 
         hyper_parameters (:class:`HyperParameters`, optional):
 
@@ -39,13 +38,19 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
 
     Returns:
 
-        A tuple `(max_likelihood_y, parameters, log_likelihoods)`.
-        `max_likelihood_y` contains the maximum log likelihood solution for
-        each trace (shape `(n,)`). `parameters` contains the optimal set of
-        fluorescence and trace model parameters for each trace and possible y
-        (shape `(n, m, k)`, where `m` is the number of possible ys considered
-        and `k` the number of parameters. `log_likelihoods` contains the
-        maximum log likelihood for each trace and y (shape `(n, m)`).
+        max_likelihood_y (array):
+
+            the maximum log likelihood solution for
+            each trace (shape `(n,)`)
+
+        parameters (:class: 'Parameters'):
+
+            the optimal set of fluorescence and kinetic model parameters for each
+            trace and possible y (shape `(n, m, k)`), where 'm' is the number
+            of ys considered and 'k' the number of parameters
+
+        log_likelihoods (array):
+            the maximum log likelihood for each trace and y (shape `(n, m)`)
     """
 
     # use defaults if not given
@@ -96,22 +101,25 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
             The number of fluorophores to consider.
 
-        parameter_ranges (:class:`ParameterRanges`, optional):
+        parameter_ranges (:class:`ParameterRanges`):
 
-            The parameter ranges to consider for the fluorescence and trace
-            model.
+            The fitting bounds for parameter optimization
 
-        hyper_parameters (:class:`HyperParameters`, optional):
+        hyper_parameters (:class:`HyperParameters`):
 
             The hyper-parameters used for the maximum likelihood estimation.
 
     Returns:
 
-        A tuple `(parameters, log_likelihoods)`. `parameters` contains the
-        optimal set of fluorescence and trace model parameters for each trace
-        (shape `(n, k)`, where `k` is the number of parameters.
-        `log_likelihoods` contains the maximum log likelihood for each trace
-        (shape `(n,)`).
+        parameters (:class: 'Parameters'):
+
+            the optimal set of fluorescence and kinetic model parameters for each trace
+            (shape `(n, k)`), where `k` is the number of parameters.
+
+        log_likelihoods (array):
+
+            the maximum log likelihood for each trace
+            (shape `(n,)`)
     """
 
     # traces: (n, t)
@@ -181,10 +189,33 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
 def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters):
     """
-    Find rough estimates of the parameters to fit a given trace
+    Find rough estimates of the parameters as starting points for parameter optimization.
 
-    Returns: array of parameters of size 5 x num guesses
+    Args:
 
+        traces (tensor of shape `(n, t)`):
+
+            A list of `n` intensity traces over time.
+
+        y (int):
+
+            The number of fluorophores to consider.
+
+        parameter_ranges (:class:`ParameterRanges`):
+
+            The fitting bounds for parameter optimization
+
+        hyper_parameters (:class:`HyperParameters`):
+
+            The hyper-parameters used for the maximum likelihood estimation.
+
+    Returns:
+
+        parameters (:class: 'Parameters'):
+
+            The inital parameter guesses for each trace, shape '(n * i, k)' where
+            'i' is the number of initial guesses per trace, and 'k' is the number of parameters.
+            For fitting purposes each initial guess is treated as a sperate trace to optimize.
     """
     num_traces = traces.shape[0]
     num_guesses = hyper_parameters.num_guesses
@@ -238,15 +269,31 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
 
 def is_done(log_likelihoods_history, hyper_parameters):
     """
-    Input: an array of log likelihoods shape epoch_length
+    Determine if the parameter optimization has plateaued.
 
-    output: bool
+    Args:
+
+        log_likelihood_history (deque):
+
+            a deque containing the log likelihoods from the 'q' most recent iterations, where
+            'q' is defined by :class: 'HyperParameters.is_done_window'.
+
+        hyper_parameters (:class:`HyperParameters`):
+
+            The hyper-parameters used for the maximum likelihood estimation.
+
+
+    Returns:
+
+        Bool:
+
+            if the imporvement over the last X iterations is below the limit
+            defined in hyperparameters
     """
 
     if len(log_likelihoods_history) < hyper_parameters.is_done_window:
         return False
 
-    # option_1
     # measures average percent change over last few cycles
 
     log_likelihoods_history = jnp.array(log_likelihoods_history)
@@ -254,12 +301,12 @@ def is_done(log_likelihoods_history, hyper_parameters):
     mean_values = jnp.abs(jnp.mean(log_likelihoods_history))
     mean_delta = jnp.abs(jnp.mean(jnp.diff(log_likelihoods_history, axis=0)))
 
-    percent_improve = mean_delta / mean_values
+    relative_improve = mean_delta / mean_values
 
-    done_improve = percent_improve < hyper_parameters.is_done_limit
+    done_improve = relative_improve < hyper_parameters.is_done_limit
 
     # Check if nan and return true if so
-    is_nan = jnp.isnan(percent_improve)
+    is_nan = jnp.isnan(relative_improve)
     converged = jnp.logical_or(done_improve, is_nan)
 
     return jnp.all(converged)
