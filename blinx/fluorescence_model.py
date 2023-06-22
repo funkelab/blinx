@@ -5,42 +5,48 @@ from jax import random
 from .constants import eps
 
 
-def create_emission_distribution(y, mu, mu_bg, sigma, hyper_parameters):
-    max_x = hyper_parameters.max_x
-    num_bins = hyper_parameters.num_x_bins
-    bin_width = max_x / num_bins
-
-    intensities_left = jnp.arange(0, num_bins) * bin_width
-    intensities_right = intensities_left + bin_width
-
-    zs = jnp.arange(0, y + 1)
-
-    p_emission_lookup = jax.vmap(
-        p_x_given_z, in_axes=(0, 0, None, None, None, None, None)
-    )(intensities_left, intensities_right, zs, mu, mu_bg, sigma, hyper_parameters)
-
-    return p_emission_lookup
-
-
-def discretize_trace(trace, hyper_parameters):
-    """Convert a float-valued trace into a trace of bin indices, according
-    to the x discretization."""
-
-    num_bins = hyper_parameters.num_x_bins
-    max_x = hyper_parameters.max_x
-    bin_width = max_x / num_bins
-
-    if num_bins <= 256:
-        x_dtype = "uint8"
-    elif num_bins <= 65536:
-        x_dtype = "uint16"
-    else:
-        x_dtype = "uint32"
-
-    return (trace / bin_width).astype(x_dtype)
-
-
 def p_x_given_z(x_left, x_right, z, mu, mu_bg, sigma, hyper_parameters):
+    """
+    The probability of observing an intensity within the range x_left to x_right,
+    given specific parameters.
+    Args:
+
+        x_left (float):
+
+            left bound of the intensity bin
+
+        x_right (float):
+
+            right bound of the intensity bin
+
+        z (int):
+
+            the number of "on" emitters
+
+        mu (float):
+
+            the mean intensity of a single emitter
+
+        mu_bg (float):
+
+            mean background intensity
+
+        sigma (float):
+
+            standard deviation of the intensity of a single emitter
+
+        hyper_parameters (:class:`HyperParameters`):
+
+            The hyper-parameters used for the maximum likelihood estimation
+
+    Returns:
+        probability (float):
+
+            probability of observing intensity in range x_left to x_right,
+            given 'z' on emitters
+
+    """
+
     p_outlier = hyper_parameters.p_outlier
     num_bins = hyper_parameters.num_x_bins
 
@@ -52,6 +58,37 @@ def p_x_given_z(x_left, x_right, z, mu, mu_bg, sigma, hyper_parameters):
 
 
 def sample_x_given_z(z, mu, mu_bg, sigma, key):
+    """Randomly sample an intensity from a distribution.
+
+    Possible intensities are lognormally distributed with the mean and std of the
+    underlying nomral distribution given by mu and sigma
+
+    Args:
+
+        z (int):
+
+            the number of "on" emitters
+
+        mu (float):
+
+            the mean intensity of a single emitter
+
+        mu_bg (float):
+
+            mean background intensity
+
+        sigma (float):
+
+            standard deviation of the intensity of a single emitter
+
+        key (jax PRNG key):
+
+            key for the jax random number generator
+
+    Returns:
+
+        intensity (float):
+    """
     log_mean = jnp.log(mu * z + mu_bg)
     std_samples = random.normal(key, z.shape)
 
@@ -59,6 +96,8 @@ def sample_x_given_z(z, mu, mu_bg, sigma, key):
 
 
 def p_lognorm(x_left, x_right, mean, sigma):
+    # implimentation of the lognormal distribution
+
     log_mean = jnp.log(mean)
 
     # ensure the following log's behave well
