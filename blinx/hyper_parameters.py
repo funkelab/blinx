@@ -2,34 +2,66 @@ from .parameters import Parameters
 
 
 class HyperParameters:
-    """Hyperparameters to control the maximum likelihood optimization.
+    """Hyperparameters used for maximum likelihood optimization.
 
     Args:
 
-        gradient_step_size (float):
+        min_y (float, default=1):
 
-            The step size for the gradient optimization of the parameters.
+            The minimum number of emitters expected to be in the system
 
-        num_guesses (int):
+        num_guesses (int, default=1):
 
             The number of parameter guesses to start maximum likelihood
             optimization from.
 
-        epoch_length (int):
+        epoch_length (int, default=1000):
 
             The length of an "epoch". This is used to break the optimization
             into smaller stretches (epochs). Convergence is tested for at the
             end of each epoch.
 
-        max_x (``int``):
+        is_done_limit (float, default=1e-5):
 
-            The maximal x value to consider for discretizing x.
+            the minimum relative change in log_likelihood between iterations,
+            below which a plateau is reached and optimization stopped
+
+        is_done_window (int, default=10):
+
+            The number of previous iterations to consider when determining if
+            an optimization plateau is reached
+
+        step_sizes (:class:'Parameters', defaults=(mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3)):
+
+            The gradient step size used in sgd optimization, individually
+            specified for each parameter in :class:'Parameters'
+
+        distribution_threshold (float, default=1e-1):
+
+            Used in post_process to compare distribution of optimal states to
+            the stady state distribution. Useful in filtering bad fits
+
+        max_x (float):
+
+            The maximum intensity value observed in the trace. Used to
+            discritize the trace and calculate individual measurement probabilities
+
+        num_x_bins (int, default=1024):
+
+            number of bins to use when discretizing the trace and calcualting
+            individual measurement probabilities
+
+        p_outlier (float, default=0.1):
+
+            a weight to account for outlier, or out of distribution intensity
+            measurements. Occasional measurements contain extreme noise and
+            this sets a minimum possible probability
     """
 
     def __init__(
         self,
         min_y=1,
-        num_guesses=5,
+        num_guesses=1,
         epoch_length=1000,
         is_done_limit=1e-5,
         is_done_window=10,
@@ -37,8 +69,9 @@ class HyperParameters:
         distribution_threshold=1e-1,
         max_x=None,
         num_x_bins=1024,
-        p_outlier=0.1,
-    ):
+        # TODO: check that this should probably be lower
+        p_outlier=0.1,):
+
         self.min_y = min_y
         self.num_guesses = num_guesses
         self.epoch_length = epoch_length
