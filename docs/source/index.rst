@@ -29,6 +29,4 @@ Full Documentation:
 
   install
   quickstart
-  extending
-  learning
   api

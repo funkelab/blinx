@@ -17,10 +17,10 @@ with open("../../pyproject.toml", "rb") as fh:
 author_list = ", ".join([author["name"] for author in project["authors"]])
 
 project = "blinx"
-copyright = f"{datetime.now().year}, {author_list}, Ana Cristina Pascual Ramos"
+copyright = f"{datetime.now().year}, {author_list}"
 author = author_list
-version = motile.__version__
-release = motile.__version__
+version = blinx.__version__
+release = blinx.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -43,7 +43,7 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
-html_logo = "img/motile.svg"
+html_logo = "img/blinx.svg"
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
 html_show_sourcelink = False
