@@ -10,3 +10,7 @@ Quickstart
 
 
 First, create a :class:`HyperParameters` instance.
+
+.. jupyter-execute::
+
+  import blinx
