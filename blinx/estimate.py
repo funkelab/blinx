@@ -46,8 +46,8 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
         parameters (:class:`Parameters`):
 
             the optimal set of fluorescence and kinetic model parameters for each
-            trace and possible y (shape `(n, m, k)`), where 'm' is the number
-            of ys considered and 'k' the number of parameters
+            trace and possible y (shape `(n, m, k)`), where `m` is the number
+            of ys considered and `k` the number of parameters
 
         log_likelihoods (array):
             the maximum log likelihood for each trace and y (shape `(n, m)`)

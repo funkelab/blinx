@@ -33,23 +33,28 @@ class ParameterRanges:
 
         mu_step (int):
 
-            The number of values to grid search over for :class:'Parameters' 'mu'
+            The number of values to grid search over for :class:`Parameters`
+            `mu`
 
         mu_bg_step (int):
 
-            The number of values to grid search over for :class:'Parameters' 'mu_bg'
+            The number of values to grid search over for :class:`Parameters`
+            `mu_bg`
 
         sigma_step (int):
 
-            The number of values to grid search over for :class:'Parameters' 'sigma'
+            The number of values to grid search over for :class:`Parameters`
+            `sigma`
 
         p_on_step (int):
 
-            The number of values to grid search over for :class:'Parameters' 'p_on'
+            The number of values to grid search over for :class:`Parameters`
+            `p_on`
 
         p_off_step (int):
 
-            The number of values to grid search over for :class:'Parameters' 'p_on'
+            The number of values to grid search over for :class:`Parameters`
+            `p_on`
     """
 
     def __init__(

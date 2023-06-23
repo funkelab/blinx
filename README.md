@@ -1,19 +1,15 @@
 blinx
 =====
 
-Installation
-------------
+A tool to estimate the number of blinking fluorescent molecules in a spatially un-resolvable region.
 
-With GPU support:
 
-```bash
-# create a conda environment with CUDA/CuDNN and JAX
-conda create -n blinx python cudatoolkit=11.4 cudatoolkit-dev=11.4 cudnn=8.2 -c conda-forge
-conda activate blinx
-pip install 'jax==0.4.1' 'jaxlib==0.4.1+cuda11.cudnn82' -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+Check out the [documentation](https://funkelab.github.io/blinx/)
 
-# install blinx
-git clone https://github.com/funkelab/blinx
-cd blinx
-pip install .
-```
+
+`blinx` is designed to work with any type of stochastically blinking emitters, but was specifically built with the analysis of 
+[DNA-PAINT](https://www.nature.com/articles/nprot.2017.024) experiments in mind.
+
+
+At the base level, `blinx` works on a piece of data called the *intensity trace*, which is an ordered sequence of intensity measurements over time. 
+

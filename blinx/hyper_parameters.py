@@ -31,10 +31,10 @@ class HyperParameters:
             The number of previous iterations to consider when determining if
             an optimization plateau is reached
 
-        step_sizes (:class:'Parameters', defaults=(mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3)):
+        step_sizes (:class:`Parameters`, defaults=(mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3)):
 
             The gradient step size used in sgd optimization, individually
-            specified for each parameter in :class:'Parameters'
+            specified for each parameter in :class:`Parameters`
 
         distribution_threshold (float, default=1e-1):
 
