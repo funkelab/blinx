@@ -4,10 +4,9 @@ What is ``blinx`` ?
 ====================
 
 ``blinx`` is a tool designed to estimate the number of independantly blinking 
-fluorescent light emitters,
-when only their combined intensity contribuions can be observed.
-
-Observing this blinking behaviour over time produces a 'trace'
+fluorescent light emitters, when only their combined intensity contribuions 
+can be observed. When measured over time this produces a `trace` the fundamental piece of data
+on which ``blinx`` operates.
 
 .. jupyter-execute::
   :hide-code:
@@ -29,4 +28,5 @@ Full Documentation:
 
   install
   quickstart
+  extrac_tracest
   api

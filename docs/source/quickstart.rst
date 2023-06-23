@@ -9,8 +9,12 @@ Quickstart
 :jupyter-download-notebook:`Download this page as a Jupyter notebook<quickstart>`
 
 
-First, create a :class:`HyperParameters` instance.
+First, generate a synthetic example intensity trace:
 
 .. jupyter-execute::
 
   import blinx
+  # generate a trace
+
+
+Next, 
