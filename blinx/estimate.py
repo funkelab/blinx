@@ -43,7 +43,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
             the maximum log likelihood solution for
             each trace (shape `(n,)`)
 
-        parameters (:class: 'Parameters'):
+        parameters (:class:`Parameters`):
 
             the optimal set of fluorescence and kinetic model parameters for each
             trace and possible y (shape `(n, m, k)`), where 'm' is the number
@@ -111,7 +111,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     Returns:
 
-        parameters (:class: 'Parameters'):
+        parameters (:class:`Parameters`):
 
             the optimal set of fluorescence and kinetic model parameters for each trace
             (shape `(n, k)`), where `k` is the number of parameters.
@@ -211,7 +211,7 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
 
     Returns:
 
-        parameters (:class: 'Parameters'):
+        parameters (:class:`Parameters`):
 
             The inital parameter guesses for each trace, shape '(n * i, k)' where
             'i' is the number of initial guesses per trace, and 'k' is the number of parameters.
@@ -276,7 +276,7 @@ def is_done(log_likelihoods_history, hyper_parameters):
         log_likelihood_history (deque):
 
             a deque containing the log likelihoods from the 'q' most recent iterations, where
-            'q' is defined by :class: 'HyperParameters.is_done_window'.
+            'q' is defined by :func:`HyperParameters.is_done_window`.
 
         hyper_parameters (:class:`HyperParameters`):
 
