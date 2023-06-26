@@ -36,6 +36,9 @@ class HyperParameters:
             The gradient step size used in sgd optimization, individually
             specified for each parameter in :class:`Parameters`
 
+            Importantly all values must be type: float for gradietns to be
+            calculated
+
         distribution_threshold (float, default=1e-1):
 
             Used in post_process to compare distribution of optimal states to
