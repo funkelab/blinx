@@ -27,6 +27,7 @@ docs = [
     "tomli",
     "jupyter_sphinx",
     "plotly",
+    "pandas"
 ]
 
 [project.urls]
