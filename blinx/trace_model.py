@@ -129,7 +129,7 @@ def generate_trace(y, parameters, num_frames, seed=None):
     key, subkey = random.split(key)
     trace = sample_x_given_z(zs, mu, mu_bg, sigma, key)
 
-    return trace[100:, 0], zs[100:]
+    return jnp.expand_dims(trace[100:, 0], 0), zs[100:]
 
 
 def sample_next_z(z, p_transition, key):
