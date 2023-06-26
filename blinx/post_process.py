@@ -17,13 +17,13 @@ def post_process(traces, parameters, likelihoods, hyper_parameters):
     proc_likelihoods = likelihoods.at[jnp.isnan(likelihoods)].set(sub_value)
 
     # comapre differences in distributions
-    dist_diffs = compare_dists(traces, parameters, hyper_parameters)
-    likes_to_remove = dist_diffs > hyper_parameters.distribution_threshold
+    #dist_diffs = compare_dists(traces, parameters, hyper_parameters)
+    #likes_to_remove = dist_diffs > hyper_parameters.distribution_threshold
 
-    proc_likelihoods = proc_likelihoods.at[likes_to_remove].set(sub_value)
+    #proc_likelihoods = proc_likelihoods.at[likes_to_remove].set(sub_value)
 
     # find new most likely y values
-    most_likely_ys = jnp.argmin(proc_likelihoods, axis=0) + hyper_parameters.y_low
+    most_likely_ys = jnp.argmax(proc_likelihoods, axis=0) + hyper_parameters.min_y
 
     return most_likely_ys, proc_likelihoods
 
@@ -32,7 +32,7 @@ def compare_dists(traces, parameters, hyper_parameters):
     # find the KL divergence between the measured viterbi distribution and the
     # theoretical distribution
 
-    viterbi_traces, viterbi_dist = viterbi(traces, parameters, hyper_parameters.y_low)
+    viterbi_traces, viterbi_dist = viterbi(traces, parameters, hyper_parameters.min_y)
 
     steady_state_dist = steady_state(parameters, hyper_parameters.y_low)
 
