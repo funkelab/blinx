@@ -18,8 +18,11 @@ def test_to_parameters():
 
     parameters = parameter_ranges.to_parameters()
 
-    for p in parameters:
-        assert p.shape == (800,)
+    assert parameters.mu.shape == (800,)
+    assert parameters.mu_bg.shape == (800,)
+    assert parameters.sigma.shape == (800,)
+    assert parameters.p_on.shape == (800,)
+    assert parameters.p_off.shape == (800,)
 
     # number of configurations:
     #

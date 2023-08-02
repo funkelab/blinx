@@ -1,9 +1,6 @@
 import jax.numpy as jnp
-import jax
-from blinx import HyperParameters, ParameterRanges
+from blinx import HyperParameters, ParameterRanges, create_step_sizes
 from blinx.estimate import estimate_parameters, get_initial_parameter_guesses
-from blinx.parameters import Parameters
-from blinx.trace_model import get_trace_log_likelihood
 
 
 def test_parameter_guesses(trace_with_groundtruth):
@@ -86,7 +83,9 @@ def test_mu_inference(trace_with_groundtruth_noisy):
     hyper_parameters = HyperParameters()
     hyper_parameters.max_x = 2 * y * parameters.mu
     hyper_parameters.num_guesses = 1
-    hyper_parameters.step_sizes = Parameters(mu=1e-4, mu_bg=0, sigma=0, p_on=0, p_off=0)
+    hyper_parameters.step_sizes = create_step_sizes(
+        mu=1e-4, mu_bg=0, sigma=0, p_on=0, p_off=0
+    )
     hyper_parameters.epoch_length = 1000
 
     # create parameter ranges that contain the true values
@@ -119,7 +118,9 @@ def test_mu_bg_inference(trace_with_groundtruth_noisy):
     hyper_parameters = HyperParameters()
     hyper_parameters.max_x = 2 * y * parameters.mu
     hyper_parameters.num_guesses = 1
-    hyper_parameters.step_sizes = Parameters(mu=0, mu_bg=1e-4, sigma=0, p_on=0, p_off=0)
+    hyper_parameters.step_sizes = create_step_sizes(
+        mu=0, mu_bg=1e-4, sigma=0, p_on=0, p_off=0
+    )
     hyper_parameters.epoch_length = 1000
 
     # create parameter ranges that contain the true values
@@ -152,7 +153,9 @@ def test_sigma_inference(trace_with_groundtruth_noisy):
     hyper_parameters = HyperParameters()
     hyper_parameters.max_x = 2 * y * parameters.mu
     hyper_parameters.num_guesses = 1
-    hyper_parameters.step_sizes = Parameters(mu=0, mu_bg=0, sigma=1e-8, p_on=0, p_off=0)
+    hyper_parameters.step_sizes = create_step_sizes(
+        mu=0, mu_bg=0, sigma=1e-8, p_on=0, p_off=0
+    )
     hyper_parameters.epoch_length = 1000
 
     # create parameter ranges that contain the true values
@@ -185,7 +188,9 @@ def test_p_on_inference(trace_with_groundtruth_noisy):
     hyper_parameters = HyperParameters()
     hyper_parameters.max_x = 2 * y * parameters.mu
     hyper_parameters.num_guesses = 1
-    hyper_parameters.step_sizes = Parameters(mu=0, mu_bg=0, sigma=0, p_on=1e-5, p_off=0)
+    hyper_parameters.step_sizes = create_step_sizes(
+        mu=0, mu_bg=0, sigma=0, p_on=1e-3, p_off=0
+    )
     hyper_parameters.epoch_length = 1000
 
     # create parameter ranges that contain the true values
@@ -218,7 +223,9 @@ def test_p_off_inference(trace_with_groundtruth_noisy):
     hyper_parameters = HyperParameters()
     hyper_parameters.max_x = 2 * y * parameters.mu
     hyper_parameters.num_guesses = 1
-    hyper_parameters.step_sizes = Parameters(mu=0, mu_bg=0, sigma=0, p_on=0, p_off=1e-5)
+    hyper_parameters.step_sizes = create_step_sizes(
+        mu=0, mu_bg=0, sigma=0, p_on=0, p_off=1e-3
+    )
     hyper_parameters.epoch_length = 1000
 
     # create parameter ranges that contain the true values

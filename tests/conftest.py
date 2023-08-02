@@ -20,6 +20,7 @@ def trace_with_groundtruth():
         "zs": zs,
     }
 
+
 @pytest.fixture(scope="module")
 def trace_with_groundtruth_noisy():
     """Create a random trace for other tests to work on."""

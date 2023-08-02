@@ -1,10 +1,8 @@
 import jax
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 from blinx import HyperParameters, ParameterRanges
 from blinx.trace_model import get_trace_log_likelihood
-from blinx.parameters import Parameters
-from blinx import utils
 
 
 def test_gradients(trace_with_groundtruth):
@@ -20,7 +18,15 @@ def test_gradients(trace_with_groundtruth):
     )
 
     log_likelihood, gradients = value_and_gradients(parameters)
-    gradients = np.asarray(gradients)
+    gradients = np.asarray(
+        [
+            gradients.mu,
+            gradients.mu_bg,
+            gradients.sigma,
+            gradients.p_on,
+            gradients.p_off,
+        ]
+    )
 
     assert not np.any(np.isnan(gradients))
 
