@@ -234,16 +234,14 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
     )
 
     # reshape parameters so they are "continuous" along each dimension
-    parameters = Parameters(
-        *(p.reshape(parameter_ranges.num_values()) for p in parameters)
-    )
+    parameters = parameters.reshape(parameter_ranges.num_values())
 
     # The following calls into non-JAX code and should therefore avoid vmap (or
     # any other transformation like jit or grad). That's why we use a for loop
     # to loop over traces instead of a vmap.
     guesses = []
     for i in range(num_traces):
-        # reshape likelihodds to line up with parameters (so they are
+        # reshape likelihoods to line up with parameters (so they are
         # "continuous" along each dimension)
         trace_log_likelihoods = log_likelihoods[i].reshape(
             parameter_ranges.num_values()
@@ -252,16 +250,18 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
         # find locations where parameters maximize log likelihoods
         min_indices = find_local_maxima(trace_log_likelihoods, num_guesses)
 
-        guesses.append(Parameters(*(p[min_indices] for p in parameters)))
+        guesses.append(parameters[min_indices])
 
     # all guesses are stored in 'guesses', the following stacks them together
     # as if we vmap'ed over traces:
 
     guesses = Parameters(
-        *(
-            jnp.stack([guesses[i][p] for i in range(num_traces)])
-            for p in range(len(parameters))
-        )
+        jnp.stack([guesses[i].mu for i in range(num_traces)]),
+        jnp.stack([guesses[i].mu_bg for i in range(num_traces)]),
+        jnp.stack([guesses[i].sigma for i in range(num_traces)]),
+        jnp.stack([guesses[i]._p_on_logit for i in range(num_traces)]),
+        jnp.stack([guesses[i]._p_off_logit for i in range(num_traces)]),
+        probs_are_logits=True,
     )
 
     return guesses

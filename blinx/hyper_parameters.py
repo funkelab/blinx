@@ -1,6 +1,10 @@
 from .parameters import Parameters
 
 
+def create_step_sizes(*args, **kwargs):
+    return Parameters(*args, **kwargs, probs_are_logits=True)
+
+
 class HyperParameters:
     """Hyperparameters used for maximum likelihood optimization.
 
@@ -68,13 +72,15 @@ class HyperParameters:
         epoch_length=1000,
         is_done_limit=1e-5,
         is_done_window=10,
-        step_sizes=Parameters(mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3),
+        step_sizes=create_step_sizes(
+            mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3
+        ),
         distribution_threshold=1e-1,
         max_x=None,
         num_x_bins=1024,
         # TODO: check that this should probably be lower
-        p_outlier=0.1,):
-
+        p_outlier=0.1,
+    ):
         self.min_y = min_y
         self.num_guesses = num_guesses
         self.epoch_length = epoch_length
