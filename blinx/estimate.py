@@ -174,13 +174,12 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     best_guesses = jnp.argmin(log_likelihoods, axis=1)
 
-    best_parameters = [
-        Parameters(*(p[t, best_guesses[t]] for p in parameters))
-        for t in range(traces.shape[0])
-    ]
-    best_log_likelihoods = jnp.array(
-        [log_likelihoods[t, i] for t, i in enumerate(best_guesses)]
+    best_indices = (
+        tuple(range(len(best_guesses))),
+        tuple(best_guesses),
     )
+    best_parameters = parameters[best_indices]
+    best_log_likelihoods = log_likelihoods[best_indices]
 
     print(best_log_likelihoods)
 
