@@ -32,8 +32,8 @@ def find_local_maxima(matrix, num_maxima=None):
 
     # first index should point to -np.inf, drop it
     indices = indices[1:]
-    
-    #values, indices = np.unique(np.isfinite(maxima), return_index=True)
+
+    # values, indices = np.unique(np.isfinite(maxima), return_index=True)
 
     # retain only last num_maxima values
     if len(indices) > num_maxima:

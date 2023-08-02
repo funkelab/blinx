@@ -20,7 +20,7 @@ def get_steady_state(transition_matrix):
 
         steady_state (array):
 
-            array (shape '(n)') containing the steady state probabilites of 
+            array (shape '(n)') containing the steady state probabilites of
             the system being in each hidden state
     """
     num_states = transition_matrix.shape[0]
