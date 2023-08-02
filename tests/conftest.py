@@ -11,7 +11,7 @@ def trace_with_groundtruth():
     parameters = Parameters(mu=100.0, mu_bg=10.0, sigma=0.001, p_on=0.1, p_off=0.3)
     num_frames = 1000
 
-    trace, zs = generate_trace(y, parameters, num_frames)
+    trace, zs = generate_trace(y, parameters, num_frames, 4)
 
     return {
         "trace": trace,
@@ -28,7 +28,7 @@ def trace_with_groundtruth_noisy():
     parameters = Parameters(mu=100.0, mu_bg=10.0, sigma=0.03, p_on=0.05, p_off=0.05)
     num_frames = 1000
 
-    trace, zs = generate_trace(y, parameters, num_frames)
+    trace, zs = generate_trace(y, parameters, num_frames, 4)
 
     return {
         "trace": trace,
