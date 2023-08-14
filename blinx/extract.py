@@ -51,16 +51,24 @@ def extract_trace(
 
     image = _read_image(image_file_path)
     picked_spots = _read_hdf5(pick_file_path)
-    drift = pd.read_csv(drift_file_path, sep=" ")
+    drift = pd.read_csv(drift_file_path, sep=" ", header=None)
 
     if all_spots is True:
         num_spots = picked_spots["group"].max()
+        
         trace = np.zeros((image.shape[2], num_spots))
         for i in range(num_spots):
             trace[:, i] = _single_spot(image, picked_spots, drift, i, pixels)
+        
+    elif isinstance(spot_num, int):
 
-    else:
         trace = _single_spot(image, picked_spots, drift, spot_num, pixels)
+        trace = np.expand_dims(trace, axis=1)
+        
+    elif isinstance(spot_num, list):
+        trace = np.zeros((image.shape[2], len(spot_num)))
+        for i, spot in enumerate(spot_num):
+            trace[:, i] = _single_spot(image, picked_spots, drift, spot, pixels)
 
     return trace
 
