@@ -1,4 +1,5 @@
 import jax
+import jax.numpy as jnp
 from jax.tree_util import register_pytree_node_class
 
 
@@ -107,3 +108,15 @@ class Parameters:
     @classmethod
     def tree_unflatten(cls, aux, children):
         return cls(*children, probs_are_logits=True)
+    
+    @classmethod
+    def stack(cls, parameters):
+        return Parameters(
+            jnp.stack([p.mu for p in parameters]),
+            jnp.stack([p.mu_bg for p in parameters]),
+            jnp.stack([p.sigma for p in parameters]),
+            jnp.stack([p._p_on_logit for p in parameters]),
+            jnp.stack([p._p_off_logit for p in parameters]),
+            probs_are_logits=True
+        )
+        
