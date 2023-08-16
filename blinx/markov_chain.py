@@ -117,7 +117,7 @@ def get_measurement_log_likelihood(p_measurement, p_initial, p_transition):
     return log_likelihood
 
 
-def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
+def get_optimal_states(p_measurement, p_initial, p_transition):
     """Reconstruct the most likely hiddens states at each timepoint for a sequence of measurements.
 
     - An implimentation of the Viterbi algorithm
@@ -170,7 +170,7 @@ def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
 
     # t = 0
 
-    log_initial_pstate = log_p_initial + log_p_measurement[measurements[0]]
+    log_initial_pstate = log_p_initial + log_p_measurement[:, 0]
 
     # t = 1, 2, ...
 
@@ -203,12 +203,14 @@ def get_optimal_states(measurements, p_measurement, p_initial, p_transition):
         joint_log_pstate = prev_log_pstate + log_p_transition
         forward_log_pstate = jnp.max(joint_log_pstate, axis=1)
         best_prev_state_lookup = jnp.argmax(joint_log_pstate, axis=1)
-        next_log_pstate = forward_log_pstate + log_p_measurement[measurement]
+        next_log_pstate = forward_log_pstate + log_p_measurement[:, measurement]
 
         return next_log_pstate, best_prev_state_lookup
 
     final_log_pstate, best_prev_state_lookups = jax.lax.scan(
-        get_next_log_pstate, log_initial_pstate, measurements[1:]
+        get_next_log_pstate,
+        log_initial_pstate,
+        jnp.arange(1, log_p_measurement.shape[1]),
     )
 
     # final best state is the argmax of the final log probability
