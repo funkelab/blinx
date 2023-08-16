@@ -77,7 +77,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
         all_parameters.append(parameters)
         all_log_likelihoods.append(log_likelihoods)
 
-    all_parameters = jnp.array(all_parameters)
+    all_parameters = Parameters.stack(all_parameters)
     all_log_likelihoods = jnp.array(all_log_likelihoods)
 
     max_likelihood_y = find_most_likely_y(
@@ -166,6 +166,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
         )
 
         log_likelihoods_history.append(log_likelihoods)
+
 
         if is_done(log_likelihoods_history, hyper_parameters):
             break
