@@ -9,7 +9,11 @@ from .fluorescence_model import (
     p_x_given_z,
     sample_x_given_z,
 )
-from .markov_chain import get_measurement_log_likelihood, get_steady_state
+from .markov_chain import (
+    get_measurement_log_likelihood,
+    get_steady_state,
+    get_optimal_states,
+)
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
@@ -61,11 +65,100 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     p_transition = create_transition_matrix(y, p_on, p_off)
     p_initial = get_steady_state(p_transition)
     p_measurement = jax.vmap(
-        p_x_given_z,
-        in_axes=(None, None, 0, None, None, None, None),
+        p_x_given_z, in_axes=(None, None, 0, None, None, None, None),
     )(x_left, x_right, zs, mu, mu_bg, sigma, hyper_parameters)
 
     return get_measurement_log_likelihood(p_measurement.T, p_initial, p_transition)
+
+
+def single_optimal_trace(trace, y, parameters, hyper_parameters):
+    """
+    Find the most likely sequence of states for a trace and a given set of 
+        parameters. An implimentation of the viterbi algorithm
+    
+    Args:
+        trace (tensor of shape '(t)'):
+
+            a sequence of intensity observations
+
+        y (int):
+
+            the total number of fluorescent emitters
+
+        parameters (:class: 'Parameters'):
+
+            set of fluorescence and kinetic model parameters
+
+        hyper_parameters (:class:`HyperParameters`, optional):
+
+            The hyper-parameters used for the maximum likelihood estimation.
+
+    Returns:
+
+        optimal_states (tensor of shape `(t)`):
+
+            a sequence of the most likely state for each time-point
+    
+    
+    """
+
+    zs = jnp.arange(0, y + 1)
+
+    # Discretize the trace into bins
+    # so that probabilities can be obtained from the cdf
+
+    max_x = hyper_parameters.max_x
+    num_bins = hyper_parameters.num_x_bins
+    bin_width = max_x / num_bins
+    x_left = (trace // bin_width) * bin_width
+    x_right = x_left + bin_width
+
+    p_transition = create_transition_matrix(y, parameters.p_on, parameters.p_off)
+    p_initial = get_steady_state(p_transition)
+    p_measurement = jax.vmap(
+        p_x_given_z, in_axes=(None, None, 0, None, None, None, None),
+    )(
+        x_left,
+        x_right,
+        zs,
+        parameters.mu,
+        parameters.mu_bg,
+        parameters.sigma,
+        hyper_parameters,
+    )
+
+    return get_optimal_states(p_measurement, p_initial, p_transition)
+
+
+def get_optimal_traces(traces, y, parameters, hyper_parameters):
+    """
+    A wrapper of 'single_optimal_trace' to handle multiple traces 
+    
+    Args:
+        traces (tensor of shape '(n x t)'):
+
+            A list of `n` intensity traces over time.
+
+        y (int):
+
+            the total number of fluorescent emitters
+
+        parameters (:class: 'Parameters'):
+
+            `n` sets of fluorescence and kinetic model parameters
+
+        hyper_parameters (:class:`HyperParameters`, optional):
+
+            The hyper-parameters used for the maximum likelihood estimation.
+        
+    
+    """
+
+    out = jax.vmap(single_optimal_trace, in_axes=(0, None, 0, None),)(
+        traces, y, parameters, hyper_parameters
+    )
+
+    return out
 
 
 def generate_trace(y, parameters, num_frames, seed=None):
@@ -261,7 +354,7 @@ def create_prob_matrix(y, p, slanted=False):
 
         a = jnp.clip(j, a_min=0.0)
         b = jnp.clip(i - j, a_min=0.0)
-        return p**a * (1.0 - p) ** b
+        return p ** a * (1.0 - p) ** b
 
     def prob_i(i):
         if slanted:
