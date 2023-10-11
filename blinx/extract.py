@@ -48,6 +48,10 @@ def extract_traces(
     drifts = np.array(pd.read_csv(drift_file_path, sep=" ", header=None))
     num_spots = picked_spots["group"].max()
 
+    # image_sequence: (x, y, t)
+    length = image_sequence.shape[2]
+    total_frames = np.arange(0, length, dtype=np.int32)
+
     context_size = int(1.5 * spot_size)
     background_size = int(3 * spot_size)
 
@@ -65,9 +69,11 @@ def extract_traces(
         (2 * background_size + 1, 2 * background_size + 1)
     )
 
-    # image_sequence: (x, y, t)
-    length = image_sequence.shape[2]
-    total_frames = np.arange(0, length, dtype=np.int32)
+    # list of all context ROIs (per frame) to ensure that background is not
+    # measured too close to another spot
+    context_rois = [
+        [] for t in range(length)
+    ]
 
     traces = []
     backgrounds = []
@@ -102,24 +108,34 @@ def extract_traces(
         background = []
         for t in tqdm(range(length), "frames", leave=False):
 
-            # TODO: use rounded version
-            # spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
-            spot_location = interpolated_spot_locations[t].astype(np.int32)
+            spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
             offset = fg.Coordinate(spot_location)
             shifted_spot_roi = spot_roi.shift(offset)
             shifted_context_roi = context_roi.shift(offset)
             shifted_background_roi = background_roi.shift(offset)
 
+            context_overlap_sum = 0
+            context_overlap_area = 0
+
+            for other_spot_num, other_context_roi in enumerate(context_rois[t]):
+                if shifted_background_roi.intersects(other_context_roi):
+
+                    overlap = shifted_background_roi.intersect(other_context_roi)
+                    overlap_sum = np.sum(image_sequence[overlap.to_slices() + (t,)])
+                    context_overlap_area += overlap.size
+                    context_overlap_sum += overlap_sum
+
+            context_rois[t].append(shifted_context_roi)
+
             spot_crop = image_sequence[shifted_spot_roi.to_slices() + (t,)]
             context_crop = image_sequence[shifted_context_roi.to_slices() + (t,)]
             background_crop = image_sequence[shifted_background_roi.to_slices() + (t,)]
 
-            bg = np.sum(background_crop) - np.sum(context_crop)
+            bg = np.sum(background_crop) - np.sum(context_crop) - context_overlap_sum
+            bg_area = background_crop.size - context_crop.size - context_overlap_area
+
             # normalize background values to match sum of crop
-            bg *= (
-                spot_crop.size /
-                (background_crop.size - context_crop.size)
-            )
+            bg *= spot_crop.size / bg_area
 
             trace.append(np.sum(spot_crop))
             background.append(bg)
