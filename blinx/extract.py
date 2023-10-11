@@ -3,15 +3,14 @@ import numpy as np
 import pandas as pd
 import skimage
 import funlib.geometry as fg
+from tqdm import tqdm
 
 
-def extract_trace(
+def extract_traces(
     image_file_path,
     pick_file_path,
     drift_file_path,
-    spot_num,
-    pixels=0,
-    all_spots=False,
+    spot_size=0
 ):
     """
     Extracts an intensity trace from a DNA-PAINT movie
@@ -32,17 +31,11 @@ def extract_trace(
             - generated as an output of picasso localize, running undrift RCC,
                 or undrift from picks
 
-        spot_num (int):
-            - the group number of the localizations to extract a trace from
-
-        pixels (int):
+        spot_size (int):
             - the radius of a grid around the center pixel to include in the
                 intensity value measurement for each frame
-            - ex. pixels = 1 measures a 3x3 grid, and sums all 9 values to get
+            - ex. spot_size = 1 measures a 3x3 grid, and sums all 9 values to get
                 the intensity measurement for each frame
-
-        all_spots (bool):
-            - if True extracts a trace from every detected spot in the image
 
     Returns:
         trace (1D array):
@@ -50,86 +43,13 @@ def extract_trace(
             of the movie, corrected for any xy drift
     """
 
-    image = _read_image(image_file_path)
+    image_sequence = _read_image(image_file_path)
     picked_spots = _read_hdf5(pick_file_path)
-    drift = pd.read_csv(drift_file_path, sep=" ", header=None)
-
-    if all_spots is True:
-        num_spots = picked_spots["group"].max()
-        
-        trace = np.zeros((image.shape[2], num_spots))
-        for i in range(num_spots):
-            trace[:, i] = extract_single_spot_trace(
-                image,
-                picked_spots,
-                drift,
-                i,
-                pixels)
-        
-    elif isinstance(spot_num, int):
-
-        trace, background = extract_single_spot_trace(
-            image,
-            picked_spots,
-            drift,
-            spot_num,
-            pixels)
-        trace = np.expand_dims(trace, axis=1)
-        
-    elif isinstance(spot_num, list):
-        trace = np.zeros((image.shape[2], len(spot_num)))
-        for i, spot in enumerate(spot_num):
-            trace[:, i] = extract_single_spot_trace(
-                image,
-                picked_spots,
-                drift,
-                spot,
-                pixels)
-
-    return trace
-
-
-def extract_single_spot_trace(
-        image_sequence,
-        picked_spots,
-        drifts,
-        spot_num,
-        spot_size):
+    drifts = np.array(pd.read_csv(drift_file_path, sep=" ", header=None))
+    num_spots = picked_spots["group"].max()
 
     context_size = int(1.5 * spot_size)
     background_size = int(3 * spot_size)
-
-    # image_sequence: (x, y, t)
-    length = image_sequence.shape[2]
-
-    # TODO: could be ensured on caller side
-    drifts = np.array(drifts)
-
-    # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
-    spot_data = np.array(picked_spots[picked_spots["group"] == spot_num])
-
-    detected_frames = spot_data[:, 0].astype(np.int32)
-    displacements = drifts[detected_frames, :]
-
-    # keep only coordinates and correct for drift
-    spot_locations = spot_data[:, 1:3] + displacements
-    # (x, y) -> (y, x)
-    spot_locations = spot_locations[:, ::-1]
-
-    total_frames = np.arange(0, length, dtype=np.int32)
-
-    # interpolate between detected frames
-    interpolated_spot_locations = np.array([
-        np.interp(
-            total_frames,
-            detected_frames,
-            spot_locations[:, 0]
-        ),
-        np.interp(
-            total_frames,
-            detected_frames,
-            spot_locations[:, 1]
-        )]).T
 
     # all ROIs centered at (0, 0)
     spot_roi = fg.Roi(
@@ -145,31 +65,69 @@ def extract_single_spot_trace(
         (2 * background_size + 1, 2 * background_size + 1)
     )
 
-    trace = []
+    # image_sequence: (x, y, t)
+    length = image_sequence.shape[2]
+    total_frames = np.arange(0, length, dtype=np.int32)
+
+    traces = []
     backgrounds = []
-    for t in range(length):
 
-        spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
-        offset = fg.Coordinate(spot_location)
-        shifted_spot_roi = spot_roi.shift(offset)
-        shifted_context_roi = context_roi.shift(offset)
-        shifted_background_roi = background_roi.shift(offset)
+    for spot_num in tqdm(range(num_spots), "spots"):
 
-        spot_crop = image_sequence[shifted_spot_roi.to_slices() + (t,)]
-        context_crop = image_sequence[shifted_context_roi.to_slices() + (t,)]
-        background_crop = image_sequence[shifted_background_roi.to_slices() + (t,)]
+        # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
+        spot_data = np.array(picked_spots[picked_spots["group"] == spot_num])
 
-        background = np.sum(background_crop) - np.sum(context_crop)
-        # normalize background values to match sum of crop
-        background *= (
-            spot_crop.size /
-            (background_crop.size - context_crop.size)
-        )
+        detected_frames = spot_data[:, 0].astype(np.int32)
+        displacements = drifts[detected_frames, :]
 
-        trace.append(np.sum(spot_crop))
-        backgrounds.append(background)
+        # keep only coordinates and correct for drift
+        spot_locations = spot_data[:, 1:3] + displacements
+        # (x, y) -> (y, x)
+        spot_locations = spot_locations[:, ::-1]
 
-    return np.array(trace), np.array(backgrounds)
+        # interpolate between detected frames
+        interpolated_spot_locations = np.array([
+            np.interp(
+                total_frames,
+                detected_frames,
+                spot_locations[:, 0]
+            ),
+            np.interp(
+                total_frames,
+                detected_frames,
+                spot_locations[:, 1]
+            )]).T
+
+        trace = []
+        background = []
+        for t in tqdm(range(length), "frames", leave=False):
+
+            # TODO: use rounded version
+            # spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
+            spot_location = interpolated_spot_locations[t].astype(np.int32)
+            offset = fg.Coordinate(spot_location)
+            shifted_spot_roi = spot_roi.shift(offset)
+            shifted_context_roi = context_roi.shift(offset)
+            shifted_background_roi = background_roi.shift(offset)
+
+            spot_crop = image_sequence[shifted_spot_roi.to_slices() + (t,)]
+            context_crop = image_sequence[shifted_context_roi.to_slices() + (t,)]
+            background_crop = image_sequence[shifted_background_roi.to_slices() + (t,)]
+
+            bg = np.sum(background_crop) - np.sum(context_crop)
+            # normalize background values to match sum of crop
+            bg *= (
+                spot_crop.size /
+                (background_crop.size - context_crop.size)
+            )
+
+            trace.append(np.sum(spot_crop))
+            background.append(bg)
+
+        traces.append(np.array(trace))
+        backgrounds.append(np.array(background))
+
+    return np.array(traces), np.array(backgrounds)
 
 
 def _read_hdf5(file):
