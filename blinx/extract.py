@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import skimage
+import funlib.geometry as fg
 
 
 def extract_trace(
@@ -58,52 +59,91 @@ def extract_trace(
         
         trace = np.zeros((image.shape[2], num_spots))
         for i in range(num_spots):
-            trace[:, i] = _single_spot(image, picked_spots, drift, i, pixels)
+            trace[:, i] = extract_single_spot_trace(
+                image,
+                picked_spots,
+                drift,
+                i,
+                pixels)
         
     elif isinstance(spot_num, int):
 
-        trace = _single_spot(image, picked_spots, drift, spot_num, pixels)
+        trace = extract_single_spot_trace(
+            image,
+            picked_spots,
+            drift,
+            spot_num,
+            pixels)
         trace = np.expand_dims(trace, axis=1)
         
     elif isinstance(spot_num, list):
         trace = np.zeros((image.shape[2], len(spot_num)))
         for i, spot in enumerate(spot_num):
-            trace[:, i] = _single_spot(image, picked_spots, drift, spot, pixels)
+            trace[:, i] = extract_single_spot_trace(
+                image,
+                picked_spots,
+                drift,
+                spot,
+                pixels)
 
     return trace
 
 
-def _single_spot(image, picked_spots, drift, spot_num, pixels):
-    single_spot = picked_spots[picked_spots["group"] == spot_num]
+def extract_single_spot_trace(
+        image_sequence,
+        picked_spots,
+        drifts,
+        spot_num,
+        context_size):
 
-    single_spot_array = np.asarray(single_spot)
-    drift_array = np.asarray(drift)
-    undrifted_cords = np.zeros((single_spot_array.shape[0], 3))
+    # image_sequence: (x, y, t)
+    length = image_sequence.shape[2]
 
-    # convert picked spot into un-drift-corrected, coordinates
-    detected_frames = single_spot_array[:, 0].astype(int)
-    displacements = drift_array[detected_frames, :]
-    undrifted_cords[:, 1] = single_spot_array[:, 1] + displacements[:, 0]
-    undrifted_cords[:, 2] = single_spot_array[:, 2] + displacements[:, 1]
-    undrifted_cords[:, 0] = detected_frames
+    # TODO: could be ensured on caller side
+    drifts = np.array(drifts)
 
-    # interpolate the position of structure between localizations / events
-    total_frames = np.arange(0, image.shape[2])
-    xs = np.interp(total_frames, undrifted_cords[:, 0], undrifted_cords[:, 1]).astype(
-        int
+    # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
+    spot_data = np.array(picked_spots[picked_spots["group"] == spot_num])
+
+    detected_frames = spot_data[:, 0].astype(np.int32)
+    displacements = drifts[detected_frames, :]
+
+    # keep only coordinates and correct for drift
+    spot_locations = spot_data[:, 1:3] + displacements
+    # (x, y) -> (y, x)
+    spot_locations = spot_locations[:, ::-1]
+
+    total_frames = np.arange(0, length, dtype=np.int32)
+
+    # interpolate between detected frames
+    interpolated_spot_locations = np.array([
+        np.interp(
+            total_frames,
+            detected_frames,
+            spot_locations[:, 0]
+        ),
+        np.interp(
+            total_frames,
+            detected_frames,
+            spot_locations[:, 1]
+        )]).T
+
+    # ROI centered at (0, 0)
+    context_roi = fg.Roi(
+        (-context_size, -context_size),
+        (2 * context_size + 1, 2 * context_size + 1)
     )
-    ys = np.interp(total_frames, undrifted_cords[:, 0], undrifted_cords[:, 2]).astype(
-        int
-    )
 
-    # extract intensity of drfiting structure for all frames
-    x_list, y_list = array_list(image, xs, ys, pixels)
+    trace = []
+    for t in range(length):
 
-    image_crop = image[y_list, x_list, total_frames]
+        spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
+        spot_roi = context_roi.shift(fg.Coordinate(spot_location))
 
-    trace = np.sum(image_crop, axis=0)
+        crop = image_sequence[spot_roi.to_slices() + (t,)]
+        trace.append(np.sum(crop))
 
-    return trace
+    return np.array(trace)
 
 
 def _read_hdf5(file):
