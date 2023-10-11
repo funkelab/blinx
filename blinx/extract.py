@@ -68,7 +68,7 @@ def extract_trace(
         
     elif isinstance(spot_num, int):
 
-        trace = extract_single_spot_trace(
+        trace, background = extract_single_spot_trace(
             image,
             picked_spots,
             drift,
@@ -94,7 +94,10 @@ def extract_single_spot_trace(
         picked_spots,
         drifts,
         spot_num,
-        context_size):
+        spot_size):
+
+    context_size = int(1.5 * spot_size)
+    background_size = int(3 * spot_size)
 
     # image_sequence: (x, y, t)
     length = image_sequence.shape[2]
@@ -128,22 +131,45 @@ def extract_single_spot_trace(
             spot_locations[:, 1]
         )]).T
 
-    # ROI centered at (0, 0)
+    # all ROIs centered at (0, 0)
+    spot_roi = fg.Roi(
+        (-spot_size, -spot_size),
+        (2 * spot_size + 1, 2 * spot_size + 1)
+    )
     context_roi = fg.Roi(
         (-context_size, -context_size),
         (2 * context_size + 1, 2 * context_size + 1)
     )
+    background_roi = fg.Roi(
+        (-background_size, -background_size),
+        (2 * background_size + 1, 2 * background_size + 1)
+    )
 
     trace = []
+    backgrounds = []
     for t in range(length):
 
         spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
-        spot_roi = context_roi.shift(fg.Coordinate(spot_location))
+        offset = fg.Coordinate(spot_location)
+        shifted_spot_roi = spot_roi.shift(offset)
+        shifted_context_roi = context_roi.shift(offset)
+        shifted_background_roi = background_roi.shift(offset)
 
-        crop = image_sequence[spot_roi.to_slices() + (t,)]
-        trace.append(np.sum(crop))
+        spot_crop = image_sequence[shifted_spot_roi.to_slices() + (t,)]
+        context_crop = image_sequence[shifted_context_roi.to_slices() + (t,)]
+        background_crop = image_sequence[shifted_background_roi.to_slices() + (t,)]
 
-    return np.array(trace)
+        background = np.sum(background_crop) - np.sum(context_crop)
+        # normalize background values to match sum of crop
+        background *= (
+            spot_crop.size /
+            (background_crop.size - context_crop.size)
+        )
+
+        trace.append(np.sum(spot_crop))
+        backgrounds.append(background)
+
+    return np.array(trace), np.array(backgrounds)
 
 
 def _read_hdf5(file):
