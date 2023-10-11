@@ -69,16 +69,18 @@ def extract_traces(
         (2 * background_size + 1, 2 * background_size + 1)
     )
 
-    # list of all context ROIs (per frame) to ensure that background is not
-    # measured too close to another spot
+    # list of all spot, context, background ROIs (per frame) to ensure that
+    # background is not measured too close to another spot
+    spot_rois = [
+        [] for t in range(length)
+    ]
     context_rois = [
         [] for t in range(length)
     ]
-
-    traces = []
-    backgrounds = []
-
-    for spot_num in tqdm(range(num_spots), "spots"):
+    background_rois = [
+        [] for t in range(length)
+    ]
+    for spot_num in tqdm(range(num_spots), "precompute ROIs"):
 
         # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
         spot_data = np.array(picked_spots[picked_spots["group"] == spot_num])
@@ -106,7 +108,7 @@ def extract_traces(
 
         trace = []
         background = []
-        for t in tqdm(range(length), "frames", leave=False):
+        for t in range(length):
 
             spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
             offset = fg.Coordinate(spot_location)
@@ -114,10 +116,32 @@ def extract_traces(
             shifted_context_roi = context_roi.shift(offset)
             shifted_background_roi = background_roi.shift(offset)
 
+            spot_rois[t].append(shifted_spot_roi)
+            context_rois[t].append(shifted_context_roi)
+            background_rois[t].append(shifted_background_roi)
+
+    traces = []
+    backgrounds = []
+
+    for spot_num in tqdm(range(num_spots), "spots"):
+
+        trace = []
+        background = []
+
+        for t in tqdm(range(length), "frames", leave=False):
+
+            shifted_spot_roi = spot_rois[t][spot_num]
+            shifted_context_roi = context_rois[t][spot_num]
+            shifted_background_roi = background_rois[t][spot_num]
+
             context_overlap_sum = 0
             context_overlap_area = 0
 
             for other_spot_num, other_context_roi in enumerate(context_rois[t]):
+
+                if spot_num == other_spot_num:
+                    continue
+
                 if shifted_background_roi.intersects(other_context_roi):
 
                     overlap = shifted_background_roi.intersect(other_context_roi)
