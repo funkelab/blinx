@@ -63,6 +63,10 @@ class HyperParameters:
             a weight to account for outlier, or out of distribution intensity
             measurements. Occasional measurements contain extreme noise and
             this sets a minimum possible probability
+
+        delta_t (float, defaul=200):
+
+            the exposure time of a single frame in ms
     """
 
     def __init__(
@@ -78,8 +82,8 @@ class HyperParameters:
         distribution_threshold=1e-1,
         max_x=None,
         num_x_bins=1024,
-        # TODO: check that this should probably be lower
         p_outlier=0.1,
+        delta_t=200
     ):
         self.min_y = min_y
         self.num_guesses = num_guesses
@@ -91,3 +95,4 @@ class HyperParameters:
         self.max_x = max_x
         self.num_x_bins = num_x_bins
         self.p_outlier = p_outlier
+        self.delta_t = delta_t
