@@ -43,10 +43,12 @@ class Parameters:
 
     """
 
-    def __init__(self, mu, mu_bg, sigma, p_on, p_off, probs_are_logits=False):
-        self.mu = mu
-        self.mu_bg = mu_bg
-        self.sigma = sigma
+    def __init__(self, r_e, r_bg, mu_ro, sigma_ro, gain, p_on, p_off, probs_are_logits=False):
+        self.r_e = r_e
+        self.r_bg = r_bg
+        self.mu_ro = mu_ro
+        self.sigma_ro = sigma_ro
+        self.gain = gain
         if probs_are_logits:
             self._p_on_logit = p_on
             self._p_off_logit = p_off
@@ -66,9 +68,11 @@ class Parameters:
         """Reshape the tensors for each parameter to the given `shape`."""
 
         return Parameters(
-            self.mu.reshape(shape),
-            self.mu_bg.reshape(shape),
-            self.sigma.reshape(shape),
+            self.r_e.reshape(shape),
+            self.r_bg.reshape(shape),
+            self.mu_ro.reshape(shape),
+            self.sigma_ro.reshape(shape),
+            self.gain.reshape(shape),
             self._p_on_logit.reshape(shape),
             self._p_off_logit.reshape(shape),
             probs_are_logits=True,
@@ -76,9 +80,11 @@ class Parameters:
 
     def __getitem__(self, key):
         return Parameters(
-            self.mu[key],
-            self.mu_bg[key],
-            self.sigma[key],
+            self.r_e[key],
+            self.r_bg[key],
+            self.mu_ro[key],
+            self.sigma_ro[key],
+            self.gain[key],
             self._p_on_logit[key],
             self._p_off_logit[key],
             probs_are_logits=True,
@@ -86,19 +92,24 @@ class Parameters:
 
     def __repr__(self):
         return (
-            f"μ={self.mu}\t"
-            f"μ_bg={self.mu_bg}\t"
-            f"o={self.sigma}\t"
+            f"r_e={self.r_e}\t"
+            f"r_bg={self.r_bg}\t"
+            f"μ_ro={self.mu_ro}\t"
+            f"o_ro={self.sigma_ro}\t"
             f"p_on={self.p_on}\t"
+            f"p_off={self.p_off}\t"
+            f"gain={self.gain}\t"
             f"p_on logits={self._p_on_logit}\t"
             f"p_off logits={self._p_off_logit}"
         )
 
     def tree_flatten(self):
         children = (
-            self.mu,
-            self.mu_bg,
-            self.sigma,
+            self.r_e,
+            self.r_bg,
+            self.mu_ro,
+            self.sigma_ro,
+            self.gain,
             self._p_on_logit,
             self._p_off_logit,
         )
@@ -112,9 +123,11 @@ class Parameters:
     @classmethod
     def stack(cls, parameters):
         return Parameters(
-            jnp.stack([p.mu for p in parameters]),
-            jnp.stack([p.mu_bg for p in parameters]),
-            jnp.stack([p.sigma for p in parameters]),
+            jnp.stack([p.r_e for p in parameters]),
+            jnp.stack([p.r_bg for p in parameters]),
+            jnp.stack([p.mu_ro for p in parameters]),
+            jnp.stack([p.sigma_ro for p in parameters]),
+            jnp.stack([p.gain for p in parameters]),
             jnp.stack([p._p_on_logit for p in parameters]),
             jnp.stack([p._p_off_logit for p in parameters]),
             probs_are_logits=True
