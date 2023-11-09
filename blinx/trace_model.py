@@ -45,9 +45,11 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
 
     """
 
-    mu = parameters.mu
-    mu_bg = parameters.mu_bg
-    sigma = parameters.sigma
+    r_e = parameters.r_e
+    r_bg = parameters.r_bg
+    mu_ro = parameters.mu_ro
+    sigma_ro = parameters.sigma_ro
+    gain = parameters.gain
     p_on = parameters.p_on
     p_off = parameters.p_off
 
@@ -66,8 +68,8 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     p_initial = get_steady_state(p_transition)
     p_measurement = jax.vmap(
         p_x_given_z,
-        in_axes=(None, None, 0, None, None, None, None),
-    )(x_left, x_right, zs, mu, mu_bg, sigma, hyper_parameters)
+        in_axes=(None, None, 0, None, None, None, None, None, None),
+    )(x_left, x_right, zs, r_e, r_bg, mu_ro, sigma_ro, gain, hyper_parameters)
 
     return get_measurement_log_likelihood(p_measurement.T, p_initial, p_transition)
 
