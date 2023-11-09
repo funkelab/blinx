@@ -77,7 +77,7 @@ class HyperParameters:
         is_done_limit=1e-5,
         is_done_window=10,
         step_sizes=create_step_sizes(
-            mu=1.0, mu_bg=1.0, sigma=1e-3, p_on=1e-3, p_off=1e-3
+            r_e=1.0, r_bg=1.0, mu_ro=1.0, sigma_ro=1e-3, gain=1.0, p_on=1e-3, p_off=1e-3
         ),
         distribution_threshold=1e-1,
         max_x=None,
