@@ -4,6 +4,7 @@ import pandas as pd
 import skimage
 import funlib.geometry as fg
 from tqdm import tqdm
+from scipy.spatial import KDTree
 
 
 def extract_traces(
@@ -123,46 +124,58 @@ def extract_traces(
     traces = []
     backgrounds = []
 
-    for spot_num in tqdm(range(num_spots), "spots"):
+    # initialize kd tree for each frame
+    kd_trees = []
+    for t in range(length):
+        spot_roi_centers = [s.center for s in spot_rois[t]]
+        kd_trees.append(KDTree(spot_roi_centers))
 
+    for spot_num in tqdm(range(num_spots), "spots"):
+        skip_trace = False
         trace = []
         background = []
 
-        for t in tqdm(range(length), "frames", leave=False):
-
+        for t in range(length):
+            
             shifted_spot_roi = spot_rois[t][spot_num]
             shifted_context_roi = context_rois[t][spot_num]
             shifted_background_roi = background_rois[t][spot_num]
 
+            spot_kdtree = kd_trees[t]
+            overlapping = spot_kdtree.query_ball_point(
+                shifted_spot_roi.center, 
+                background_size + context_size + 2)
+
             context_overlap_sum = 0
             context_overlap_area = 0
 
-            for other_spot_num, other_context_roi in enumerate(context_rois[t]):
-
-                if spot_num == other_spot_num:
-                    continue
-
-                if shifted_background_roi.intersects(other_context_roi):
-
-                    overlap = shifted_background_roi.intersect(other_context_roi)
-                    overlap_sum = np.sum(image_sequence[overlap.to_slices() + (t,)])
-                    context_overlap_area += overlap.size
-                    context_overlap_sum += overlap_sum
-
-            context_rois[t].append(shifted_context_roi)
+            for conflict in overlapping:
+                other_context_roi = context_rois[t][conflict]
+                overlap = shifted_background_roi.intersect(other_context_roi)
+                overlap_sum = np.sum(image_sequence[overlap.to_slices() + (t,)])
+                context_overlap_area += overlap.size
+                context_overlap_sum += overlap_sum
 
             spot_crop = image_sequence[shifted_spot_roi.to_slices() + (t,)]
             context_crop = image_sequence[shifted_context_roi.to_slices() + (t,)]
             background_crop = image_sequence[shifted_background_roi.to_slices() + (t,)]
 
-            bg = np.sum(background_crop) - np.sum(context_crop) - context_overlap_sum
-            bg_area = background_crop.size - context_crop.size - context_overlap_area
+            bg = np.sum(background_crop) - np.sum(context_crop) #- context_overlap_sum
+            bg_area = background_crop.size - context_crop.size #- context_overlap_area
 
-            # normalize background values to match sum of crop
+            
+
+            if bg_area == 0:
+                bg_area = 1
+                skip_trace = True
+
             bg *= spot_crop.size / bg_area
-
+            
             trace.append(np.sum(spot_crop))
             background.append(bg)
+            
+            if skip_trace is True:
+                continue
 
         traces.append(np.array(trace))
         backgrounds.append(np.array(background))
