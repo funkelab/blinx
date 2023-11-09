@@ -65,7 +65,8 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
     p_transition = create_transition_matrix(y, p_on, p_off)
     p_initial = get_steady_state(p_transition)
     p_measurement = jax.vmap(
-        p_x_given_z, in_axes=(None, None, 0, None, None, None, None),
+        p_x_given_z,
+        in_axes=(None, None, 0, None, None, None, None),
     )(x_left, x_right, zs, mu, mu_bg, sigma, hyper_parameters)
 
     return get_measurement_log_likelihood(p_measurement.T, p_initial, p_transition)
@@ -73,9 +74,9 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
 
 def single_optimal_trace(trace, y, parameters, hyper_parameters):
     """
-    Find the most likely sequence of states for a trace and a given set of 
+    Find the most likely sequence of states for a trace and a given set of
         parameters. An implimentation of the viterbi algorithm
-    
+
     Args:
         trace (tensor of shape '(t)'):
 
@@ -98,8 +99,8 @@ def single_optimal_trace(trace, y, parameters, hyper_parameters):
         optimal_states (tensor of shape `(t)`):
 
             a sequence of the most likely state for each time-point
-    
-    
+
+
     """
 
     zs = jnp.arange(0, y + 1)
@@ -116,7 +117,8 @@ def single_optimal_trace(trace, y, parameters, hyper_parameters):
     p_transition = create_transition_matrix(y, parameters.p_on, parameters.p_off)
     p_initial = get_steady_state(p_transition)
     p_measurement = jax.vmap(
-        p_x_given_z, in_axes=(None, None, 0, None, None, None, None),
+        p_x_given_z,
+        in_axes=(None, None, 0, None, None, None, None),
     )(
         x_left,
         x_right,
@@ -132,8 +134,8 @@ def single_optimal_trace(trace, y, parameters, hyper_parameters):
 
 def get_optimal_traces(traces, y, parameters, hyper_parameters):
     """
-    A wrapper of 'single_optimal_trace' to handle multiple traces 
-    
+    A wrapper of 'single_optimal_trace' to handle multiple traces
+
     Args:
         traces (tensor of shape '(n x t)'):
 
@@ -150,18 +152,19 @@ def get_optimal_traces(traces, y, parameters, hyper_parameters):
         hyper_parameters (:class:`HyperParameters`, optional):
 
             The hyper-parameters used for the maximum likelihood estimation.
-        
-    
+
+
     """
 
-    out = jax.vmap(single_optimal_trace, in_axes=(0, None, 0, None),)(
-        traces, y, parameters, hyper_parameters
-    )
+    out = jax.vmap(
+        single_optimal_trace,
+        in_axes=(0, None, 0, None),
+    )(traces, y, parameters, hyper_parameters)
 
     return out
 
 
-def generate_trace(y, parameters, num_frames, seed=None):
+def generate_trace(y, parameters, num_frames, hyper_parameters, seed=None):
     """Create a simulated intensity trace.
 
     Args:
@@ -189,9 +192,11 @@ def generate_trace(y, parameters, num_frames, seed=None):
     if seed is None:
         seed = time.time_ns()
 
-    mu = parameters.mu
-    mu_bg = parameters.mu_bg
-    sigma = parameters.sigma
+    r_e = parameters.r_e
+    r_bg = parameters.r_bg
+    mu_ro = parameters.mu_ro
+    sigma_ro = parameters.sigma_ro
+    gain = parameters.gain
     p_on = parameters.p_on
     p_off = parameters.p_off
 
@@ -209,7 +214,7 @@ def generate_trace(y, parameters, num_frames, seed=None):
     # FIXME: this should not be needed, p_initial off?
     # add 100 frames, then remove first 100 to allow system to
     # come to equillibrium
-    subkeys = random.split(key, num=num_frames + 100)
+    subkeys = random.split(key, num=num_frames)
     _, zs = jax.lax.scan(
         # return value of the scan function is carry and "y", both of which are
         # the next z in our case -> (sample_next_z(),) * 2
@@ -220,9 +225,11 @@ def generate_trace(y, parameters, num_frames, seed=None):
 
     key = random.PRNGKey(seed)
     key, subkey = random.split(key)
-    trace = sample_x_given_z(zs, mu, mu_bg, sigma, key)
+    trace = sample_x_given_z(
+        zs, r_e, r_bg, mu_ro, sigma_ro, gain, key, hyper_parameters
+    )
 
-    return jnp.expand_dims(trace[100:, 0], 0), zs[100:]
+    return trace.T, zs
 
 
 def sample_next_z(z, p_transition, key):
@@ -354,7 +361,7 @@ def create_prob_matrix(y, p, slanted=False):
 
         a = jnp.clip(j, a_min=0.0)
         b = jnp.clip(i - j, a_min=0.0)
-        return p ** a * (1.0 - p) ** b
+        return p**a * (1.0 - p) ** b
 
     def prob_i(i):
         if slanted:
