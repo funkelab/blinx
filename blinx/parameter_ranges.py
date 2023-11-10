@@ -59,20 +59,26 @@ class ParameterRanges:
 
     def __init__(
         self,
-        mu_range=(100, 30000),
-        mu_bg_range=(5000, 5000),
-        sigma_range=(0.1, 0.1),
+        r_e_range=(100, 30000),
+        r_bg_range=(5000, 5000),
+        mu_ro_range=(1000, 3000),
+        sigma_ro_range=(0.1, 0.1),
+        gain_range=(1, 3),
         p_on_range=(1e-4, 1.0),
         p_off_range=(1e-4, 1.0),
-        mu_step=100,
-        mu_bg_step=1,
-        sigma_step=1,
+        r_e_step=100,
+        r_bg_step=1,
+        mu_ro_step=1,
+        sigma_ro_step=1,
+        gain_step=1,
         p_on_step=20,
         p_off_step=20,
     ):
-        self.mu_range = Range(*mu_range, mu_step)
-        self.mu_bg_range = Range(*mu_bg_range, mu_bg_step)
-        self.sigma_range = Range(*sigma_range, sigma_step)
+        self.r_e_range = Range(*r_e_range, r_e_step)
+        self.r_bg_range = Range(*r_bg_range, r_bg_step)
+        self.mu_ro_range = Range(*mu_ro_range, mu_ro_step)
+        self.sigma_ro_range = Range(*sigma_ro_range, sigma_ro_step)
+        self.gain_range = Range(*gain_range, gain_step)
         self.p_on_range = Range(*p_on_range, p_on_step)
         self.p_off_range = Range(*p_off_range, p_off_step)
 
@@ -89,9 +95,11 @@ class ParameterRanges:
         return tuple(
             r.step
             for r in [
-                self.mu_range,
-                self.mu_bg_range,
-                self.sigma_range,
+                self.r_e_range,
+                self.r_bg_range,
+                self.mu_ro_range,
+                self.sigma_ro_range,
+                self.gain_range,
                 self.p_on_range,
                 self.p_off_range,
             ]
@@ -99,9 +107,11 @@ class ParameterRanges:
 
     def to_parameters(self):
         range_tensors = {
-            "mu": self.mu_range.to_tensor(),
-            "mu_bg": self.mu_bg_range.to_tensor(),
-            "sigma": self.sigma_range.to_tensor(),
+            "r_e": self.r_e_range.to_tensor(),
+            "r_bg": self.r_bg_range.to_tensor(),
+            "mu_ro": self.mu_ro_range.to_tensor(),
+            "sigma_ro": self.sigma_ro_range.to_tensor(),
+            "gain": self.gain_range.to_tensor(),
             "p_on": self.p_on_range.to_tensor(),
             "p_off": self.p_off_range.to_tensor(),
         }
