@@ -167,7 +167,6 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
         log_likelihoods_history.append(log_likelihoods)
 
-
         if is_done(log_likelihoods_history, hyper_parameters):
             break
 
@@ -256,9 +255,11 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
     # as if we vmap'ed over traces:
 
     guesses = Parameters(
-        jnp.stack([guesses[i].mu for i in range(num_traces)]),
-        jnp.stack([guesses[i].mu_bg for i in range(num_traces)]),
-        jnp.stack([guesses[i].sigma for i in range(num_traces)]),
+        jnp.stack([guesses[i].r_e for i in range(num_traces)]),
+        jnp.stack([guesses[i].r_bg for i in range(num_traces)]),
+        jnp.stack([guesses[i].mu_ro for i in range(num_traces)]),
+        jnp.stack([guesses[i].sigma_ro for i in range(num_traces)]),
+        jnp.stack([guesses[i].gain for i in range(num_traces)]),
         jnp.stack([guesses[i]._p_on_logit for i in range(num_traces)]),
         jnp.stack([guesses[i]._p_off_logit for i in range(num_traces)]),
         probs_are_logits=True,
