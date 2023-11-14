@@ -15,7 +15,6 @@ def create_optimizer(value_grad_func, hyper_parameters):
         # get value and gradient
 
         value, gradients = value_grad_func(trace, parameters)
-
         # update parameters
         parameters = jax.tree_util.tree_map(
             lambda p, s, g: p + s * g, parameters, step_sizes, gradients

@@ -4,8 +4,9 @@ from jax import random
 
 from .constants import eps
 
-
-def p_x_given_z(x_left, x_right, z, mu, mu_bg, sigma, hyper_parameters):
+def p_x_given_z(
+    x_left, x_right, z, r_e, r_bg, mean_ro, sigma_ro, gain, hyper_parameters
+):
     """
     The probability of observing an intensity within the range x_left to x_right,
     given specific parameters.
@@ -13,27 +14,35 @@ def p_x_given_z(x_left, x_right, z, mu, mu_bg, sigma, hyper_parameters):
 
         x_left (float):
 
-            left bound of the intensity bin
+            left bound of the intensity bin (ADU)
 
         x_right (float):
 
-            right bound of the intensity bin
+            right bound of the intensity bin (ADU)
 
         z (int):
 
             the number of "on" emitters
 
-        mu (float):
+        r_e (float):
 
-            the mean intensity of a single emitter
+            the photon emission rate of an emitter (e-/ms)
 
-        mu_bg (float):
+        r_bg (float):
 
-            mean background intensity
+            the photon emission rate of the background (e-/ms)
 
-        sigma (float):
+        mean_ro (float):
 
-            standard deviation of the intensity of a single emitter
+            the mean readout noise of the spot, also known as the offset value (ADU)
+
+        sigma_ro (float):
+
+            the variance of the readout noise of the spot
+
+        gain (float):
+
+            the amplification / conversion factor between ADU and photoelectrons (ADU/e-)
 
         hyper_parameters (:class:`HyperParameters`):
 
@@ -46,22 +55,35 @@ def p_x_given_z(x_left, x_right, z, mu, mu_bg, sigma, hyper_parameters):
             given 'z' on emitters
 
     """
-
     p_outlier = hyper_parameters.p_outlier
     num_bins = hyper_parameters.num_x_bins
 
-    mean = mu * z + mu_bg
+    delta_t = hyper_parameters.delta_t
 
-    return p_outlier / num_bins + (1 - p_outlier) * p_lognorm(
-        x_left, x_right, mean, sigma
+    x_tilda_left = (x_left - mean_ro) / gain + sigma_ro / gain**2
+
+    x_tilda_right = (x_right - mean_ro) / gain + sigma_ro / gain**2
+
+    loc = (z * r_e + r_bg) * delta_t + sigma_ro / gain**2
+    scale = jnp.sqrt((z * r_e + r_bg) * delta_t + sigma_ro / gain**2)
+
+    return p_outlier / num_bins + (1 - p_outlier) * p_norm(
+        x_tilda_left, x_tilda_right, loc, scale
     )
 
 
-def sample_x_given_z(z, mu, mu_bg, sigma, key):
-    """Randomly sample an intensity from a distribution.
+def p_norm(x_tilda_left, x_tilda_right, loc, scale):
+    # implimnetation of the normal distribution
 
-    Possible intensities are lognormally distributed with the mean and std of the
-    underlying nomral distribution given by mu and sigma
+    cdf_left = jax.scipy.stats.norm.cdf(x_tilda_left, loc=loc, scale=scale)
+    cdf_right = jax.scipy.stats.norm.cdf(x_tilda_right, loc=loc, scale=scale)
+
+    return cdf_right - cdf_left
+
+
+def sample_x_given_z(z, r_e, r_bg, mean_ro, sigma_ro, gain, key, hyper_parameters):
+    """
+    Randomly sample intensity values from a normal distribution.
 
     Args:
 
@@ -69,45 +91,47 @@ def sample_x_given_z(z, mu, mu_bg, sigma, key):
 
             the number of "on" emitters
 
-        mu (float):
+        r_e (float):
 
-            the mean intensity of a single emitter
+            the photon emission rate of an emitter (e-/ms)
 
-        mu_bg (float):
+        r_bg (float):
 
-            mean background intensity
+            the photon emission rate of the background (e-/ms)
 
-        sigma (float):
+        mean_ro (float):
 
-            standard deviation of the intensity of a single emitter
+            the mean readout noise of the spot, also known as the offset value (ADU)
+
+        sigma_ro (float):
+
+            the variance of the readout noise of the spot
+
+        gain (float):
+
+            the amplification / conversion factor between ADU and photoelectrons (ADU/e-)
 
         key (jax PRNG key):
 
             key for the jax random number generator
 
+        hyper_parameters (:class:`HyperParameters`):
+
+                The hyper-parameters used for the maximum likelihood estimation
+
     Returns:
 
-        intensity (float):
+        x (float):
+
+            The observed intenstiy (ADU)
     """
-    log_mean = jnp.log(mu * z + mu_bg)
     std_samples = random.normal(key, z.shape)
 
-    return jnp.exp(std_samples * sigma + log_mean)
+    delta_t = hyper_parameters.delta_t
 
+    loc = (z * r_e + r_bg) * delta_t + sigma_ro / gain**2
+    scale = jnp.sqrt((z * r_e + r_bg) * delta_t + sigma_ro / gain**2)
 
-def p_lognorm(x_left, x_right, mean, sigma):
-    # implimentation of the lognormal distribution
+    x = ((std_samples * scale + loc) - sigma_ro / gain**2) * gain + mean_ro
 
-    log_mean = jnp.log(mean)
-
-    # ensure the following log's behave well
-    x_left = jnp.clip(x_left, a_min=eps)
-    x_right = jnp.clip(x_right, a_min=eps)
-
-    log_x_left = jnp.log(x_left)
-    log_x_right = jnp.log(x_right)
-
-    cdf_left = jax.scipy.stats.norm.cdf(log_x_left, loc=log_mean, scale=sigma)
-    cdf_right = jax.scipy.stats.norm.cdf(log_x_right, loc=log_mean, scale=sigma)
-
-    return cdf_right - cdf_left
+    return x

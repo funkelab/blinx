@@ -4,14 +4,10 @@ import pandas as pd
 import skimage
 import funlib.geometry as fg
 from tqdm import tqdm
+from scipy.spatial import KDTree
 
 
-def extract_traces(
-    image_file_path,
-    pick_file_path,
-    drift_file_path,
-    spot_size=0
-):
+def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0):
     """
     Extracts an intensity trace from a DNA-PAINT movie
 
@@ -52,36 +48,25 @@ def extract_traces(
     length = image_sequence.shape[2]
     total_frames = np.arange(0, length, dtype=np.int32)
 
-    context_size = int(1.5 * spot_size)
-    background_size = int(3 * spot_size)
+    context_size = int(2 * spot_size)
+    background_size = int(4 * spot_size)
 
     # all ROIs centered at (0, 0)
-    spot_roi = fg.Roi(
-        (-spot_size, -spot_size),
-        (2 * spot_size + 1, 2 * spot_size + 1)
-    )
+    spot_roi = fg.Roi((-spot_size, -spot_size), (2 * spot_size + 1, 2 * spot_size + 1))
     context_roi = fg.Roi(
-        (-context_size, -context_size),
-        (2 * context_size + 1, 2 * context_size + 1)
+        (-context_size, -context_size), (2 * context_size + 1, 2 * context_size + 1)
     )
     background_roi = fg.Roi(
         (-background_size, -background_size),
-        (2 * background_size + 1, 2 * background_size + 1)
+        (2 * background_size + 1, 2 * background_size + 1),
     )
 
     # list of all spot, context, background ROIs (per frame) to ensure that
     # background is not measured too close to another spot
-    spot_rois = [
-        [] for t in range(length)
-    ]
-    context_rois = [
-        [] for t in range(length)
-    ]
-    background_rois = [
-        [] for t in range(length)
-    ]
+    spot_rois = [[] for t in range(length)]
+    context_rois = [[] for t in range(length)]
+    background_rois = [[] for t in range(length)]
     for spot_num in tqdm(range(num_spots), "precompute ROIs"):
-
         # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
         spot_data = np.array(picked_spots[picked_spots["group"] == spot_num])
 
@@ -94,22 +79,16 @@ def extract_traces(
         spot_locations = spot_locations[:, ::-1]
 
         # interpolate between detected frames
-        interpolated_spot_locations = np.array([
-            np.interp(
-                total_frames,
-                detected_frames,
-                spot_locations[:, 0]
-            ),
-            np.interp(
-                total_frames,
-                detected_frames,
-                spot_locations[:, 1]
-            )]).T
+        interpolated_spot_locations = np.array(
+            [
+                np.interp(total_frames, detected_frames, spot_locations[:, 0]),
+                np.interp(total_frames, detected_frames, spot_locations[:, 1]),
+            ]
+        ).T
 
         trace = []
         background = []
         for t in range(length):
-
             spot_location = np.round(interpolated_spot_locations[t]).astype(np.int32)
             offset = fg.Coordinate(spot_location)
             shifted_spot_roi = spot_roi.shift(offset)
@@ -123,46 +102,55 @@ def extract_traces(
     traces = []
     backgrounds = []
 
-    for spot_num in tqdm(range(num_spots), "spots"):
+    # initialize kd tree for each frame
+    kd_trees = []
+    for t in range(length):
+        spot_roi_centers = [s.center for s in spot_rois[t]]
+        kd_trees.append(KDTree(spot_roi_centers))
 
+    for spot_num in tqdm(range(num_spots), "spots"):
+        skip_trace = False
         trace = []
         background = []
 
-        for t in tqdm(range(length), "frames", leave=False):
-
+        for t in range(length):
             shifted_spot_roi = spot_rois[t][spot_num]
             shifted_context_roi = context_rois[t][spot_num]
             shifted_background_roi = background_rois[t][spot_num]
 
+            spot_kdtree = kd_trees[t]
+            overlapping = spot_kdtree.query_ball_point(
+                shifted_spot_roi.center, background_size + context_size + 2
+            )
+
             context_overlap_sum = 0
             context_overlap_area = 0
 
-            for other_spot_num, other_context_roi in enumerate(context_rois[t]):
-
-                if spot_num == other_spot_num:
-                    continue
-
-                if shifted_background_roi.intersects(other_context_roi):
-
-                    overlap = shifted_background_roi.intersect(other_context_roi)
-                    overlap_sum = np.sum(image_sequence[overlap.to_slices() + (t,)])
-                    context_overlap_area += overlap.size
-                    context_overlap_sum += overlap_sum
-
-            context_rois[t].append(shifted_context_roi)
+            for conflict in overlapping:
+                other_context_roi = context_rois[t][conflict]
+                overlap = shifted_background_roi.intersect(other_context_roi)
+                overlap_sum = np.sum(image_sequence[overlap.to_slices() + (t,)])
+                context_overlap_area += overlap.size
+                context_overlap_sum += overlap_sum
 
             spot_crop = image_sequence[shifted_spot_roi.to_slices() + (t,)]
             context_crop = image_sequence[shifted_context_roi.to_slices() + (t,)]
             background_crop = image_sequence[shifted_background_roi.to_slices() + (t,)]
 
-            bg = np.sum(background_crop) - np.sum(context_crop) - context_overlap_sum
-            bg_area = background_crop.size - context_crop.size - context_overlap_area
+            bg = np.sum(background_crop) - np.sum(context_crop)  # - context_overlap_sum
+            bg_area = background_crop.size - context_crop.size  # - context_overlap_area
 
-            # normalize background values to match sum of crop
+            if bg_area == 0:
+                bg_area = 1
+                skip_trace = True
+
             bg *= spot_crop.size / bg_area
 
             trace.append(np.sum(spot_crop))
             background.append(bg)
+
+            if skip_trace is True:
+                continue
 
         traces.append(np.array(trace))
         backgrounds.append(np.array(background))
