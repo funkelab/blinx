@@ -160,13 +160,12 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     log_likelihoods_history = collections.deque(maxlen=hyper_parameters.is_done_window)
 
-    for i in tqdm(range(hyper_parameters.epoch_length)):
+    for i in tqdm(range(hyper_parameters.epoch_length), f"y={y}"):
         parameters, log_likelihoods, optimizer_states = optimizer_step(
             traces, parameters, optimizer_states
         )
 
         log_likelihoods_history.append(log_likelihoods)
-
         if is_done(log_likelihoods_history, hyper_parameters):
             break
 
