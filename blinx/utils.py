@@ -3,46 +3,18 @@ import numpy as np
 import scipy.signal
 
 
-def find_local_maxima(matrix, num_maxima=None):
-    # convert to numpy array
-    matrix = np.asarray(matrix)
+def find_maximum(matrix):
+    temp_matrix = np.array(matrix)
 
-    if num_maxima is None:
-        num_maxima = matrix.size
+    # argmax will return index of any nans
+    # so replace nans with -inf
 
-    # pad matrix with -inf
-    padded = np.ones(tuple(s + 2 for s in matrix.shape), dtype=matrix.dtype)
-    padded *= -np.inf
-    slices = tuple(slice(1, s + 1) for s in matrix.shape)
-    padded[slices] = matrix
+    mask = np.isnan(temp_matrix)
 
-    padded_indices = scipy.signal.argrelmax(np.asarray(padded), mode="wrap")
-    # indices into original matrix without padding
-    indices = tuple(i - 1 for i in padded_indices)
+    temp_matrix[mask] = -np.inf
 
-    # set all non-maxima to -inf
-    maxima = np.ones_like(matrix)
-    maxima *= -np.inf
-    maxima[indices] = matrix[indices]
+    index = np.argmax(temp_matrix)
 
-    # get all maximum values, sorted
-    values, indices = np.unique(maxima, return_index=True)
+    index = np.unravel_index(index, temp_matrix.shape)
 
-    assert values[0] == -np.inf
-
-    # first index should point to -np.inf, drop it
-    indices = indices[1:]
-
-    # values, indices = np.unique(np.isfinite(maxima), return_index=True)
-
-    # retain only last num_maxima values
-    if len(indices) > num_maxima:
-        indices = indices[-num_maxima:]
-
-    # convert back to non-flattened indices
-    indices = np.unravel_index(indices, matrix.shape)
-
-    # convert to jax array
-    indices = tuple(jnp.array(i) for i in indices)
-
-    return indices
+    return tuple(jnp.expand_dims(jnp.array(i), axis=-1) for i in index)
