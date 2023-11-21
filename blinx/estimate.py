@@ -12,7 +12,7 @@ from .parameters import Parameters
 # FIXME: post_process should be renamed and find a new home
 from .post_process import post_process as find_most_likely_y
 from .trace_model import get_trace_log_likelihood
-from .utils import find_local_maxima
+from .utils import find_maximum
 
 
 def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
@@ -246,9 +246,9 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
         )
 
         # find locations where parameters maximize log likelihoods
-        min_indices = find_local_maxima(trace_log_likelihoods, num_guesses)
+        min_index = find_maximum(trace_log_likelihoods)
 
-        guesses.append(parameters[min_indices])
+        guesses.append(parameters[min_index])
 
     # all guesses are stored in 'guesses', the following stacks them together
     # as if we vmap'ed over traces:
