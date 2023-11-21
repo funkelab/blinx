@@ -105,6 +105,14 @@ def single_optimal_trace(trace, y, parameters, hyper_parameters):
 
     """
 
+    r_e = parameters.r_e
+    r_bg = parameters.r_bg
+    mu_ro = parameters.mu_ro
+    sigma_ro = parameters.sigma_ro
+    gain = parameters.gain
+    p_on = parameters.p_on
+    p_off = parameters.p_off
+
     zs = jnp.arange(0, y + 1)
 
     # Discretize the trace into bins
@@ -116,20 +124,12 @@ def single_optimal_trace(trace, y, parameters, hyper_parameters):
     x_left = (trace // bin_width) * bin_width
     x_right = x_left + bin_width
 
-    p_transition = create_transition_matrix(y, parameters.p_on, parameters.p_off)
+    p_transition = create_transition_matrix(y, p_on, p_off)
     p_initial = get_steady_state(p_transition)
     p_measurement = jax.vmap(
         p_x_given_z,
-        in_axes=(None, None, 0, None, None, None, None),
-    )(
-        x_left,
-        x_right,
-        zs,
-        parameters.mu,
-        parameters.mu_bg,
-        parameters.sigma,
-        hyper_parameters,
-    )
+        in_axes=(None, None, 0, None, None, None, None, None, None),
+    )(x_left, x_right, zs, r_e, r_bg, mu_ro, sigma_ro, gain, hyper_parameters)
 
     return get_optimal_states(p_measurement, p_initial, p_transition)
 
