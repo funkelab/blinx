@@ -2,18 +2,59 @@ import time
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.stats import norm
 from jax import random
 from scipy.special import comb
 
-from .fluorescence_model import (
-    p_x_given_z,
-    sample_x_given_z,
-)
+from .fluorescence_model import p_x_given_z, sample_x_given_z, p_norm
 from .markov_chain import (
     get_measurement_log_likelihood,
     get_steady_state,
     get_optimal_states,
 )
+
+
+def log_p_parameters(parameters, hyper_parameters):
+    """
+    the prior distribution p(parameters)
+    """
+    log_p = 0.0
+    if hyper_parameters.r_e_loc is not None:
+        log_p += jnp.log(
+            norm.pdf(
+                parameters.r_e, hyper_parameters.r_e_loc, hyper_parameters.r_e_scale
+            )
+        )
+    if hyper_parameters.r_bg_loc is not None:
+        log_p += jnp.log(
+            norm.pdf(
+                parameters.r_bg, hyper_parameters.r_bg_loc, hyper_parameters.r_bg_scale
+            )
+        )
+    if hyper_parameters.g_loc is not None:
+        log_p += jnp.log(
+            norm.pdf(parameters.g, hyper_parameters.g_loc, hyper_parameters.g_scale)
+        )
+    if hyper_parameters.mu_loc is not None:
+        log_p += jnp.log(
+            norm.pdf(parameters.mu, hyper_parameters.mu_loc, hyper_parameters.mu_scale)
+        )
+
+    # sigma is a uniform prior distribution and will add a constant to all models --> we leave it out
+    # log_p_sigma = jnp.log(1.0 / (hyper_parameters.sigma_max - hyper_parameters.sigma_min))
+
+    # We don't model a uniform prior distribution for p_on and p_off, because with bounds 0-1 it reduces to 0
+
+    return log_p
+
+
+def log_p_x_parameters(trace, y, parameters, hyper_parameters):
+    """
+    Joint probability of p(x|parameters) and p(parameters)
+    """
+    return get_trace_log_likelihood(
+        trace, y, parameters, hyper_parameters
+    ) + log_p_parameters(parameters, hyper_parameters)
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
