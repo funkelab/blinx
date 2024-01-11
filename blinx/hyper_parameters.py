@@ -83,7 +83,15 @@ class HyperParameters:
         max_x=None,
         num_x_bins=1024,
         p_outlier=0.1,
-        delta_t=200
+        delta_t=200.0,
+        r_e_loc=None,
+        r_e_scale=None,
+        r_bg_loc=None,
+        r_bg_scale=None,
+        g_loc=None,
+        g_scale=None,
+        mu_loc=None,
+        mu_scale=None,
     ):
         self.min_y = min_y
         self.num_guesses = num_guesses
@@ -96,3 +104,20 @@ class HyperParameters:
         self.num_x_bins = num_x_bins
         self.p_outlier = p_outlier
         self.delta_t = delta_t
+        self.r_e_loc = r_e_loc
+        self.r_e_scale = r_e_scale
+        self.r_bg_loc = r_bg_loc
+        self.r_bg_scale = r_bg_scale
+        self.g_loc = g_loc
+        self.g_scale = g_scale
+        self.mu_loc = mu_loc
+        self.mu_scale = mu_scale
+
+        if sum([r_e_loc is None, r_e_scale is None]) == 1:
+            raise RuntimeError("Both r_e_loc and r_e_scale need to be provided")
+        if sum([r_bg_loc is None, r_bg_scale is None]) == 1:
+            raise RuntimeError("Both r_bg_loc and r_bg_scale need to be provided")
+        if sum([g_loc is None, g_scale is None]) == 1:
+            raise RuntimeError("Both g_loc and g_scale need to be provided")
+        if sum([mu_loc is None, mu_scale is None]) == 1:
+            raise RuntimeError("Both mu_loc and mu_scale need to be provided")
