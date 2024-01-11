@@ -11,7 +11,7 @@ from .parameters import Parameters
 
 # FIXME: post_process should be renamed and find a new home
 from .post_process import post_process as find_most_likely_y
-from .trace_model import get_trace_log_likelihood
+from .trace_model import get_trace_log_likelihood, log_p_x_parameters
 from .utils import find_maximum
 
 
@@ -142,13 +142,17 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     # create the objective function for the given y, as well as its gradient
     # function
 
-    log_likelihood_grad_func = jax.value_and_grad(
-        lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters), argnums=1
+    grad_func = jax.value_and_grad(
+        lambda t, p: log_p_x_parameters(t, y, p, hyper_parameters), argnums=1
+    )
+
+    hessian_func = jax.hessian(
+        lambda t, p: log_p_x_parameters(t, y, p, hyper_parameters), argnums=1
     )
 
     # create an optimizer, which will be shared between all optimizations
 
-    optimizer = create_optimizer(log_likelihood_grad_func, hyper_parameters)
+    optimizer = create_optimizer(grad_func, hyper_parameters)
 
     # create optimizer states for each trace and parameter guess
 
@@ -169,8 +173,21 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
         if is_done(log_likelihoods_history, hyper_parameters):
             break
 
-    # for each trace, keep the best parameter/log likelihood
+    hessian_vmap_parameters = jax.vmap(hessian_func, in_axes=(None, 0))
+    hessian_vmap_traces = jax.vmap(hessian_vmap_parameters)
+    # not sure about this negative number (Bishop 4.137)
+    occam_factor_a = -hessian_vmap_traces(traces, parameters).flatten()
+    # (n, n, t, g)
+    occam_factor_a = jnp.transpose(occam_factor_a, axes=(2, 3, 0, 1))
+    # (t, g, n, n)
+    print(occam_factor_a.shape)
+    print(occam_factor_a)
+    print(jnp.linalg.det(occam_factor_a))
+    occam_factors = -0.5 * jnp.log(jnp.linalg.det(occam_factor_a))
+    # (t, g)
 
+    # for each trace, keep the best parameter/log likelihood
+    
     best_guesses = jnp.argmin(log_likelihoods, axis=1)
 
     best_indices = (
@@ -179,8 +196,16 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     )
     best_parameters = parameters[best_indices]
     best_log_likelihoods = log_likelihoods[best_indices]
+    best_occam_factors = occam_factors[best_indices]
 
+    best_log_evidence = best_log_likelihoods + best_occam_factors
+
+    print('log likelihoods')
     print(best_log_likelihoods)
+    print('-'*50)
+    print('log_evidence')
+    print(best_log_evidence)
+    print(best_parameters)
 
     return best_parameters, best_log_likelihoods
 
