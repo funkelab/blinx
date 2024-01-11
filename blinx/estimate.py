@@ -187,7 +187,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     # (t, g)
 
     # for each trace, keep the best parameter/log likelihood
-    
+
     best_guesses = jnp.argmin(log_likelihoods, axis=1)
 
     best_indices = (
@@ -200,10 +200,10 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     best_log_evidence = best_log_likelihoods + best_occam_factors
 
-    print('log likelihoods')
+    print("log likelihoods")
     print(best_log_likelihoods)
-    print('-'*50)
-    print('log_evidence')
+    print("-" * 50)
+    print("log_evidence")
     print(best_log_evidence)
     print(best_parameters)
 
