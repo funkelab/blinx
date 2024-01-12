@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from tqdm import tqdm
 
 from .hyper_parameters import HyperParameters
-from .optimizer import create_optimizer
+from .optimizer import create_adam_optimizer
 from .parameter_ranges import ParameterRanges
 from .parameters import Parameters
 
@@ -152,7 +152,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     # create an optimizer, which will be shared between all optimizations
 
-    optimizer = create_optimizer(grad_func, hyper_parameters)
+    optimizer = create_adam_optimizer(grad_func, hyper_parameters)
 
     # create optimizer states for each trace and parameter guess
 
