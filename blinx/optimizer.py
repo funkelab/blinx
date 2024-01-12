@@ -21,6 +21,6 @@ def create_optimizer(value_grad_func, hyper_parameters):
         )
 
         # return updated parameters, current value, and optimizer state
-        return parameters, value, opt_state
+        return parameters, value, opt_state, gradients
 
     return Optimizer(init, step)
