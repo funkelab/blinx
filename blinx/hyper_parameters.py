@@ -85,6 +85,7 @@ class HyperParameters:
         num_x_bins=1024,
         p_outlier=0.1,
         delta_t=200.0,
+        param_min_max_scale=5, # how many sigmas away from mean should the model consider
         r_e_loc=None,
         r_e_scale=None,
         r_bg_loc=None,
@@ -107,6 +108,9 @@ class HyperParameters:
         self.num_x_bins = num_x_bins
         self.p_outlier = p_outlier
         self.delta_t = delta_t
+        
+        # priors
+        self.param_min_max_scale = param_min_max_scale
         self.r_e_loc = r_e_loc
         self.r_e_scale = r_e_scale
         self.r_bg_loc = r_bg_loc
@@ -128,3 +132,15 @@ class HyperParameters:
             raise RuntimeError("Both mu_loc and mu_scale need to be provided")
         if sum([sigma_loc is None, sigma_scale is None]) == 1:
             raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
+        
+        # need to define bin sizes for norm.cdf to get actual probabilities from priors
+        if r_e_loc is not None:
+            self.r_e_bin = r_e_loc / num_x_bins
+        if r_bg_loc is not None:
+            self.r_bg_bin = r_bg_loc / num_x_bins
+        if g_loc is not None:
+            self.g_bin = g_loc / num_x_bins
+        if mu_loc is not None:
+            self.mu_bin = mu_loc / num_x_bins
+        if sigma_loc is not None:
+            self.sigma_bin = sigma_loc / num_x_bins
