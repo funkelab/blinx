@@ -92,6 +92,8 @@ class HyperParameters:
         g_scale=None,
         mu_loc=None,
         mu_scale=None,
+        sigma_loc=None,
+        sigma_scale=None
     ):
         self.min_y = min_y
         self.num_guesses = num_guesses
@@ -112,6 +114,8 @@ class HyperParameters:
         self.g_scale = g_scale
         self.mu_loc = mu_loc
         self.mu_scale = mu_scale
+        self.sigma_loc = sigma_loc
+        self.sigma_scale = sigma_scale
 
         if sum([r_e_loc is None, r_e_scale is None]) == 1:
             raise RuntimeError("Both r_e_loc and r_e_scale need to be provided")
@@ -121,3 +125,5 @@ class HyperParameters:
             raise RuntimeError("Both g_loc and g_scale need to be provided")
         if sum([mu_loc is None, mu_scale is None]) == 1:
             raise RuntimeError("Both mu_loc and mu_scale need to be provided")
+        if sum([sigma_loc is None, sigma_scale is None]) == 1:
+            raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")

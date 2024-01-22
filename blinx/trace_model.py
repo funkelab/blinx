@@ -33,11 +33,16 @@ def log_p_parameters(parameters, hyper_parameters):
         )
     if hyper_parameters.g_loc is not None:
         log_p += jnp.log(
-            norm.pdf(parameters.g, hyper_parameters.g_loc, hyper_parameters.g_scale)
+            norm.pdf(parameters.gain, hyper_parameters.g_loc, hyper_parameters.g_scale)
         )
     if hyper_parameters.mu_loc is not None:
         log_p += jnp.log(
-            norm.pdf(parameters.mu, hyper_parameters.mu_loc, hyper_parameters.mu_scale)
+            norm.pdf(parameters.mu_ro, hyper_parameters.mu_loc, hyper_parameters.mu_scale)
+        )
+    
+    if hyper_parameters.sigma_loc is not None:
+        log_p += jnp.log(
+            norm.pdf(parameters.sigma_ro, hyper_parameters.sigma_loc, hyper_parameters.sigma_scale)
         )
 
     # sigma is a uniform prior distribution and will add a constant to all models --> we leave it out
