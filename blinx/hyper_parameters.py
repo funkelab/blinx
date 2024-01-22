@@ -1,4 +1,5 @@
 from .parameters import Parameters
+import jax.numpy as jnp
 
 
 def create_step_sizes(*args, **kwargs):
