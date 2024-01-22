@@ -69,22 +69,25 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
 
     all_parameters = []
     all_log_likelihoods = []
+    all_log_evidences = []
     for y in range(hyper_parameters.min_y, max_y + 1):
-        parameters, log_likelihoods = estimate_parameters(
+        parameters, log_likelihoods, log_evidence = estimate_parameters(
             traces, y, parameter_ranges, hyper_parameters
         )
 
         all_parameters.append(parameters)
         all_log_likelihoods.append(log_likelihoods)
+        all_log_evidences.append(log_evidence)
 
     all_parameters = Parameters.stack(all_parameters)
     all_log_likelihoods = jnp.array(all_log_likelihoods)
+    all_log_evidences = jnp.array(all_log_evidences)
 
     max_likelihood_y = find_most_likely_y(
         traces, all_parameters, all_log_likelihoods, hyper_parameters
     )
 
-    return max_likelihood_y, all_parameters, all_log_likelihoods
+    return max_likelihood_y[0], all_parameters, all_log_likelihoods, all_log_evidences
 
 
 def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
@@ -207,7 +210,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     print(best_log_evidence)
     print(best_parameters)
 
-    return best_parameters, best_log_likelihoods
+    return best_parameters, best_log_likelihoods, best_log_evidence
 
 
 def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters):
