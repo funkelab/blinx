@@ -21,32 +21,44 @@ def log_p_parameters(parameters, hyper_parameters):
     log_p = 0.0
     if hyper_parameters.r_e_loc is not None:
         log_p += jnp.log(
-            norm.pdf(
-                parameters.r_e, hyper_parameters.r_e_loc, hyper_parameters.r_e_scale
-            )
+            p_norm(
+                parameters.r_e - hyper_parameters.r_e_bin/2,
+                parameters.r_e + hyper_parameters.r_e_bin/2,
+                hyper_parameters.r_e_loc,
+                hyper_parameters.r_e_scale)
         )
     if hyper_parameters.r_bg_loc is not None:
         log_p += jnp.log(
-            norm.pdf(
-                parameters.r_bg, hyper_parameters.r_bg_loc, hyper_parameters.r_bg_scale
-            )
+            p_norm(
+                parameters.r_bg - hyper_parameters.r_bg_bin/2,
+                parameters.r_bg + hyper_parameters.r_bg_bin/2,
+                hyper_parameters.r_bg_loc,
+                hyper_parameters.r_bg_scale)
         )
     if hyper_parameters.g_loc is not None:
         log_p += jnp.log(
-            norm.pdf(parameters.gain, hyper_parameters.g_loc, hyper_parameters.g_scale)
+            p_norm(
+                parameters.gain - hyper_parameters.g_bin/2,
+                parameters.gain + hyper_parameters.g_bin/2,
+                hyper_parameters.g_loc,
+                hyper_parameters.g_scale)
         )
     if hyper_parameters.mu_loc is not None:
         log_p += jnp.log(
-            norm.pdf(parameters.mu_ro, hyper_parameters.mu_loc, hyper_parameters.mu_scale)
+            p_norm(
+                parameters.mu_ro - hyper_parameters.mu_bin/2,
+                parameters.mu_ro + hyper_parameters.mu_bin/2,
+                hyper_parameters.mu_loc,
+                hyper_parameters.mu_scale)
         )
-    
     if hyper_parameters.sigma_loc is not None:
         log_p += jnp.log(
-            norm.pdf(parameters.sigma_ro, hyper_parameters.sigma_loc, hyper_parameters.sigma_scale)
+            p_norm(
+                parameters.sigma_ro - hyper_parameters.sigma_bin/2,
+                parameters.sigma_ro + hyper_parameters.sigma_bin/2,
+                hyper_parameters.sigma_loc,
+                hyper_parameters.sigma_scale)
         )
-
-    # sigma is a uniform prior distribution and will add a constant to all models --> we leave it out
-    # log_p_sigma = jnp.log(1.0 / (hyper_parameters.sigma_max - hyper_parameters.sigma_min))
 
     # We don't model a uniform prior distribution for p_on and p_off, because with bounds 0-1 it reduces to 0
 

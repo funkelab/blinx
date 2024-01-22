@@ -73,11 +73,11 @@ def p_x_given_z(
     )
 
 
-def p_norm(x_tilda_left, x_tilda_right, loc, scale):
+def p_norm(x_left, x_right, loc, scale):
     # implimnetation of the normal distribution
 
-    cdf_left = jax.scipy.stats.norm.cdf(x_tilda_left, loc=loc, scale=scale)
-    cdf_right = jax.scipy.stats.norm.cdf(x_tilda_right, loc=loc, scale=scale)
+    cdf_left = jax.scipy.stats.norm.cdf(x_left, loc=loc, scale=scale)
+    cdf_right = jax.scipy.stats.norm.cdf(x_right, loc=loc, scale=scale)
 
     return cdf_right - cdf_left
 
