@@ -183,9 +183,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     # (n, n, t, g)
     occam_factor_a = jnp.transpose(occam_factor_a, axes=(2, 3, 0, 1))
     # (t, g, n, n)
-    print(occam_factor_a.shape)
-    print(occam_factor_a)
-    print(jnp.linalg.det(occam_factor_a))
+
     occam_factors = -0.5 * jnp.log(jnp.linalg.det(occam_factor_a))
     # (t, g)
 
@@ -208,7 +206,6 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     print("-" * 50)
     print("log_evidence")
     print(best_log_evidence)
-    print(best_parameters)
 
     return best_parameters, best_log_likelihoods, best_log_evidence
 
