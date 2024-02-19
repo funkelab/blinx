@@ -85,7 +85,7 @@ class HyperParameters:
         num_x_bins=1024,
         p_outlier=0.1,
         delta_t=200.0,
-        param_min_max_scale=5, # how many sigmas away from mean should the model consider
+        param_min_max_scale=5,  # how many sigmas away from mean should the model consider
         r_e_loc=None,
         r_e_scale=None,
         r_bg_loc=None,
@@ -95,7 +95,7 @@ class HyperParameters:
         mu_loc=None,
         mu_scale=None,
         sigma_loc=None,
-        sigma_scale=None
+        sigma_scale=None,
     ):
         self.min_y = min_y
         self.num_guesses = num_guesses
@@ -108,18 +108,28 @@ class HyperParameters:
         self.num_x_bins = num_x_bins
         self.p_outlier = p_outlier
         self.delta_t = delta_t
-        
+
         # priors
-        self.r_e_loc = r_e_loc
-        self.r_e_scale = r_e_scale
-        self.r_bg_loc = r_bg_loc
-        self.r_bg_scale = r_bg_scale
-        self.g_loc = g_loc
-        self.g_scale = g_scale
-        self.mu_loc = mu_loc
-        self.mu_scale = mu_scale
-        self.sigma_loc = sigma_loc
-        self.sigma_scale = sigma_scale
+        self.prior_locs = Parameters(
+            r_e=r_e_loc,
+            r_bg=r_bg_loc,
+            mu_ro=mu_loc,
+            sigma_ro=sigma_loc,
+            gain=g_loc,
+            p_on=None,
+            p_off=None,
+            probs_are_logits=True,
+        )
+        self.prior_scales = Parameters(
+            r_e=r_e_scale,
+            r_bg=r_bg_scale,
+            mu_ro=mu_scale,
+            gain=g_scale,
+            sigma_ro=sigma_scale,
+            p_on=None,
+            p_off=None,
+            probs_are_logits=True,
+        )
 
         if sum([r_e_loc is None, r_e_scale is None]) == 1:
             raise RuntimeError("Both r_e_loc and r_e_scale need to be provided")
@@ -131,3 +141,33 @@ class HyperParameters:
             raise RuntimeError("Both mu_loc and mu_scale need to be provided")
         if sum([sigma_loc is None, sigma_scale is None]) == 1:
             raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
+
+    # below is experimental
+    # ------------------------------------------------
+    def check_length(self, val, target_length):
+        if val is None:
+            return val
+        elif len(val) == 1:
+            return jnp.repeat(val, target_length)
+        elif len(val) > 1 and len(val) != target_length:
+            raise RuntimeError("not enough prior values provided")
+
+    def check_prior_shapes(self, target_length):
+        self.prior_locs = Parameters(
+            r_e=self.check_length(self.prior_locs.r_e, target_length),
+            r_bg=self.check_length(self.prior_locs.r_bg, target_length),
+            mu_ro=self.check_length(self.prior_locs.mu_ro, target_length),
+            sigma_ro=self.check_length(self.prior_locs.sigma_ro, target_length),
+            gain=self.check_length(self.prior_locs.gain, target_length),
+            p_on=self.check_length(self.prior_locs.p_on, target_length),
+            p_off=self.check_length(self.prior_locs.p_off, target_length),
+        )
+        self.prior_scales = Parameters(
+            r_e=self.check_length(self.prior_scales.r_e, target_length),
+            r_bg=self.check_length(self.prior_scales.r_bg, target_length),
+            mu_ro=self.check_length(self.prior_scales.mu_ro, target_length),
+            sigma_ro=self.check_length(self.prior_scales.sigma_ro, target_length),
+            gain=self.check_length(self.prior_scales.gain, target_length),
+            p_on=self.check_length(self.prior_scales.p_on, target_length),
+            p_off=self.check_length(self.prior_scales.p_off, target_length),
+        )
