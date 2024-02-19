@@ -30,27 +30,26 @@ def create_optimizer(value_grad_func, hyper_parameters):
 
 
 def create_adam_optimizer(
-        value_grad_func,
-        hyper_parameters,
-        b1=0.9,
-        b2=0.999,
-        eps=1e-8,
-        eps_root=0.0,
-        mu_dtype=None):
+    value_grad_func,
+    hyper_parameters,
+    b1=0.9,
+    b2=0.999,
+    eps=1e-8,
+    eps_root=0.0,
+    mu_dtype=None,
+):
     """The Adam optimizer for maximization of the given function."""
 
     step_sizes = hyper_parameters.step_sizes
 
     adam_transform = scale_by_adam(
-        b1=b1, b2=b2,
-        eps=eps, eps_root=eps_root,
-        mu_dtype=mu_dtype)
+        b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype
+    )
 
     def init(parameters):
         return adam_transform.init(parameters)
 
     def step(trace, parameters, opt_state):
-
         # get value and gradient
         value, gradients = value_grad_func(trace, parameters)
 
