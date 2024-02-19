@@ -247,13 +247,18 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
 
     # vmap over parameters
     log_likelihood_over_parameters = jax.vmap(
-        lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters),
-        in_axes=(None, 0),
+        lambda t, p, p_loc, p_scale: log_p_x_parameters(
+            t, y, p, hyper_parameters, p_loc, p_scale
+        ),
+        in_axes=(None, 0, None, None),
     )
 
     # vmap over traces
-    log_likelihoods = jax.vmap(log_likelihood_over_parameters, in_axes=(0, None))(
-        traces, parameters
+    log_likelihoods = jax.vmap(log_likelihood_over_parameters, in_axes=(0, None, 0, 0))(
+        traces,
+        parameters,
+        hyper_parameters.prior_locs,
+        hyper_parameters.prior_scales,
     )
 
     # reshape parameters so they are "continuous" along each dimension
