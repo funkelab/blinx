@@ -146,11 +146,17 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     # function
 
     grad_func = jax.value_and_grad(
-        lambda t, p: log_p_x_parameters(t, y, p, hyper_parameters), argnums=1
+        lambda t, p, p_loc, p_scale: log_p_x_parameters(
+            t, y, p, hyper_parameters, p_loc, p_scale
+        ),
+        argnums=1,
     )
 
     hessian_func = jax.hessian(
-        lambda t, p: log_p_x_parameters(t, y, p, hyper_parameters), argnums=1
+        lambda t, p, p_loc, p_scale: log_p_x_parameters(
+            t, y, p, hyper_parameters, p_loc, p_scale
+        ),
+        argnums=1,
     )
 
     # create an optimizer, which will be shared between all optimizations
@@ -161,25 +167,31 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     optimizer_states = jax.vmap(jax.vmap(optimizer.init))(parameters)
 
-    vmap_parameters = jax.vmap(optimizer.step, in_axes=(None, 0, 0))
-    vmap_traces = jax.vmap(vmap_parameters)
+    vmap_parameters = jax.vmap(optimizer.step, in_axes=(None, 0, 0, None, None))
+    vmap_traces = jax.vmap(vmap_parameters)  # in_axes=(0, None, None, 0, 0))
     optimizer_step = jax.jit(vmap_traces)
 
     log_likelihoods_history = collections.deque(maxlen=hyper_parameters.is_done_window)
 
     for i in tqdm(range(hyper_parameters.epoch_length), f"y={y}"):
         parameters, log_likelihoods, optimizer_states, gradients = optimizer_step(
-            traces, parameters, optimizer_states
+            traces,
+            parameters,
+            optimizer_states,
+            hyper_parameters.prior_locs,
+            hyper_parameters.prior_scales,
         )
 
         log_likelihoods_history.append(log_likelihoods)
         if is_done(log_likelihoods_history, hyper_parameters):
             break
 
-    hessian_vmap_parameters = jax.vmap(hessian_func, in_axes=(None, 0))
+    hessian_vmap_parameters = jax.vmap(hessian_func, in_axes=(None, 0, None, None))
     hessian_vmap_traces = jax.vmap(hessian_vmap_parameters)
     # not sure about this negative number (Bishop 4.137)
-    occam_factor_a = -hessian_vmap_traces(traces, parameters).flatten()
+    occam_factor_a = -hessian_vmap_traces(
+        traces, parameters, hyper_parameters.prior_locs, hyper_parameters.prior_scales
+    ).flatten()
     # (n, n, t, g)
     occam_factor_a = jnp.transpose(occam_factor_a, axes=(2, 3, 0, 1))
     # (t, g, n, n)

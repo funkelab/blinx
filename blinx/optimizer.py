@@ -49,10 +49,9 @@ def create_adam_optimizer(
     def init(parameters):
         return adam_transform.init(parameters)
 
-    def step(trace, parameters, opt_state):
+    def step(trace, parameters, opt_state, p_loc, p_scale):
         # get value and gradient
-        value, gradients = value_grad_func(trace, parameters)
-
+        value, gradients = value_grad_func(trace, parameters, p_loc, p_scale)
         # Adam update
         updates, opt_state = adam_transform.update(gradients, opt_state)
 

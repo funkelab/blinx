@@ -14,12 +14,7 @@ from .markov_chain import (
 )
 
 
-def log_p_parameters(
-    parameters,
-    hyper_parameters,
-    locs,
-    scales
-):
+def log_p_parameters(parameters, hyper_parameters, locs, scales):
     """
     the prior distribution p(parameters)
     """
@@ -40,14 +35,7 @@ def log_p_parameters(
     return log_p
 
 
-def log_p_x_parameters(
-    trace,
-    y,
-    parameters,
-    hyper_parameters,
-    locs,
-    scales
-):
+def log_p_x_parameters(trace, y, parameters, hyper_parameters, locs, scales):
     """
     Joint probability of p(x|parameters) and p(parameters)
     """
