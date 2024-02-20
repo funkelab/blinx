@@ -15,7 +15,7 @@ from .trace_model import get_trace_log_likelihood, log_p_x_parameters
 from .utils import find_maximum
 
 
-def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
+def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None, initial_parameters=None):
     """Infer the most likely number of fluorophores for the given traces.
 
     Args:
@@ -54,7 +54,6 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     """
 
     # use defaults if not given
-
     if parameter_ranges is None:
         parameter_ranges = ParameterRanges()
     if hyper_parameters is None:
@@ -72,7 +71,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     all_log_evidences = []
     for y in range(hyper_parameters.min_y, max_y + 1):
         parameters, log_likelihoods, log_evidence = estimate_parameters(
-            traces, y, parameter_ranges, hyper_parameters
+            traces, y, parameter_ranges, hyper_parameters, initial_parameters
         )
 
         all_parameters.append(parameters)
@@ -90,7 +89,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     return max_likelihood_y[0], all_parameters, all_log_likelihoods, all_log_evidences
 
 
-def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
+def estimate_parameters(traces, y, parameter_ranges, hyper_parameters, initial_parameters):
     """Fit the fluorescence and trace model to the given traces, assuming that
     `y` fluorophores are present in each trace.
 
@@ -111,6 +110,10 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
         hyper_parameters (:class:`HyperParameters`):
 
             The hyper-parameters used for the maximum likelihood estimation.
+        
+        initial_parameters (:class: `Parameters`):
+
+            Initial guesses for the parameters, if None guess them from a grid search over parameter_ranges
 
     Returns:
 
@@ -138,9 +141,12 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     # get initial guesses for each trace, given the parameter ranges
 
-    parameters = get_initial_parameter_guesses(
-        traces, y, parameter_ranges, hyper_parameters
-    )
+    if initial_parameters is None:
+        parameters = get_initial_parameter_guesses(
+            traces, y, parameter_ranges, hyper_parameters
+        )
+    else:
+        parameters = initial_parameters
 
     # create the objective function for the given y, as well as its gradient
     # function
