@@ -46,16 +46,6 @@ def log_p_x_parameters(trace, y, parameters, hyper_parameters, locs, scales):
         hyper_parameters,
         locs,
         scales
-        # r_e_loc,
-        # r_e_scale,
-        # r_bg_loc,
-        # r_bg_scale,
-        # g_loc,
-        # g_scale,
-        # mu_loc,
-        # mu_scale,
-        # sigma_loc,
-        # sigma_scale,
     )
 
 
@@ -114,7 +104,10 @@ def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
         in_axes=(None, None, 0, None, None, None, None, None, None),
     )(x_left, x_right, zs, r_e, r_bg, mu_ro, sigma_ro, gain, hyper_parameters)
 
-    return get_measurement_log_likelihood(p_measurement.T, p_initial, p_transition)
+    outliers = jax.lax.top_k(x_right, hyper_parameters.num_outliers)
+    trimmed_p_measurement = p_measurement.at[:,outliers[1]].set(1/hyper_parameters.num_x_bins)
+
+    return get_measurement_log_likelihood(trimmed_p_measurement.T, p_initial, p_transition)
 
 
 def single_optimal_trace(trace, y, parameters, hyper_parameters):
