@@ -15,7 +15,7 @@ from .trace_model import get_trace_log_likelihood, log_p_x_parameters
 from .utils import find_maximum
 
 
-def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
+def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None, initial_parameters=None):
     """Infer the most likely number of fluorophores for the given traces.
 
     Args:
@@ -54,7 +54,6 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     """
 
     # use defaults if not given
-
     if parameter_ranges is None:
         parameter_ranges = ParameterRanges()
     if hyper_parameters is None:
@@ -72,7 +71,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     all_log_evidences = []
     for y in range(hyper_parameters.min_y, max_y + 1):
         parameters, log_likelihoods, log_evidence = estimate_parameters(
-            traces, y, parameter_ranges, hyper_parameters
+            traces, y, parameter_ranges, hyper_parameters, initial_parameters
         )
 
         all_parameters.append(parameters)
@@ -90,7 +89,7 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None):
     return max_likelihood_y[0], all_parameters, all_log_likelihoods, all_log_evidences
 
 
-def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
+def estimate_parameters(traces, y, parameter_ranges, hyper_parameters, initial_parameters):
     """Fit the fluorescence and trace model to the given traces, assuming that
     `y` fluorophores are present in each trace.
 
@@ -111,6 +110,10 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
         hyper_parameters (:class:`HyperParameters`):
 
             The hyper-parameters used for the maximum likelihood estimation.
+        
+        initial_parameters (:class: `Parameters`):
+
+            Initial guesses for the parameters, if None guess them from a grid search over parameter_ranges
 
     Returns:
 
@@ -138,19 +141,28 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     # get initial guesses for each trace, given the parameter ranges
 
-    parameters = get_initial_parameter_guesses(
-        traces, y, parameter_ranges, hyper_parameters
-    )
+    if initial_parameters is None:
+        parameters = get_initial_parameter_guesses(
+            traces, y, parameter_ranges, hyper_parameters
+        )
+    else:
+        parameters = initial_parameters
 
     # create the objective function for the given y, as well as its gradient
     # function
 
     grad_func = jax.value_and_grad(
-        lambda t, p: log_p_x_parameters(t, y, p, hyper_parameters), argnums=1
+        lambda t, p, p_loc, p_scale: log_p_x_parameters(
+            t, y, p, hyper_parameters, p_loc, p_scale
+        ),
+        argnums=1,
     )
 
     hessian_func = jax.hessian(
-        lambda t, p: log_p_x_parameters(t, y, p, hyper_parameters), argnums=1
+        lambda t, p, p_loc, p_scale: log_p_x_parameters(
+            t, y, p, hyper_parameters, p_loc, p_scale
+        ),
+        argnums=1,
     )
 
     # create an optimizer, which will be shared between all optimizations
@@ -161,31 +173,35 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
 
     optimizer_states = jax.vmap(jax.vmap(optimizer.init))(parameters)
 
-    vmap_parameters = jax.vmap(optimizer.step, in_axes=(None, 0, 0))
-    vmap_traces = jax.vmap(vmap_parameters)
+    vmap_parameters = jax.vmap(optimizer.step, in_axes=(None, 0, 0, None, None))
+    vmap_traces = jax.vmap(vmap_parameters)  # in_axes=(0, None, None, 0, 0))
     optimizer_step = jax.jit(vmap_traces)
 
     log_likelihoods_history = collections.deque(maxlen=hyper_parameters.is_done_window)
 
     for i in tqdm(range(hyper_parameters.epoch_length), f"y={y}"):
         parameters, log_likelihoods, optimizer_states, gradients = optimizer_step(
-            traces, parameters, optimizer_states
+            traces,
+            parameters,
+            optimizer_states,
+            hyper_parameters.prior_locs,
+            hyper_parameters.prior_scales,
         )
 
         log_likelihoods_history.append(log_likelihoods)
         if is_done(log_likelihoods_history, hyper_parameters):
             break
 
-    hessian_vmap_parameters = jax.vmap(hessian_func, in_axes=(None, 0))
+    hessian_vmap_parameters = jax.vmap(hessian_func, in_axes=(None, 0, None, None))
     hessian_vmap_traces = jax.vmap(hessian_vmap_parameters)
     # not sure about this negative number (Bishop 4.137)
-    occam_factor_a = -hessian_vmap_traces(traces, parameters).flatten()
+    occam_factor_a = -hessian_vmap_traces(
+        traces, parameters, hyper_parameters.prior_locs, hyper_parameters.prior_scales
+    ).flatten()
     # (n, n, t, g)
     occam_factor_a = jnp.transpose(occam_factor_a, axes=(2, 3, 0, 1))
     # (t, g, n, n)
-    print(occam_factor_a.shape)
-    print(occam_factor_a)
-    print(jnp.linalg.det(occam_factor_a))
+
     occam_factors = -0.5 * jnp.log(jnp.linalg.det(occam_factor_a))
     # (t, g)
 
@@ -208,7 +224,6 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters):
     print("-" * 50)
     print("log_evidence")
     print(best_log_evidence)
-    print(best_parameters)
 
     return best_parameters, best_log_likelihoods, best_log_evidence
 
@@ -250,13 +265,18 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
 
     # vmap over parameters
     log_likelihood_over_parameters = jax.vmap(
-        lambda t, p: get_trace_log_likelihood(t, y, p, hyper_parameters),
-        in_axes=(None, 0),
+        lambda t, p, p_loc, p_scale: log_p_x_parameters(
+            t, y, p, hyper_parameters, p_loc, p_scale
+        ),
+        in_axes=(None, 0, None, None),
     )
 
     # vmap over traces
-    log_likelihoods = jax.vmap(log_likelihood_over_parameters, in_axes=(0, None))(
-        traces, parameters
+    log_likelihoods = jax.vmap(log_likelihood_over_parameters, in_axes=(0, None, 0, 0))(
+        traces,
+        parameters,
+        hyper_parameters.prior_locs,
+        hyper_parameters.prior_scales,
     )
 
     # reshape parameters so they are "continuous" along each dimension

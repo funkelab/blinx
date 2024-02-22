@@ -51,6 +51,9 @@ def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0
     context_size = int(2 * spot_size)
     background_size = int(4 * spot_size)
 
+    # define image ROI to trim any ROIs that extend beyond bounds of frame
+    image_roi = fg.Roi((0,0), (image_sequence.shape[0], image_sequence.shape[1]))
+
     # all ROIs centered at (0, 0)
     spot_roi = fg.Roi((-spot_size, -spot_size), (2 * spot_size + 1, 2 * spot_size + 1))
     context_roi = fg.Roi(
@@ -68,13 +71,13 @@ def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0
     background_rois = [[] for t in range(length)]
     for spot_num in tqdm(range(num_spots), "precompute ROIs"):
         # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
-        spot_data = np.array(picked_spots[picked_spots["group"] == spot_num])
+        spot_data = picked_spots[picked_spots["group"] == spot_num]
 
-        detected_frames = spot_data[:, 0].astype(np.int32)
+        detected_frames = np.asarray(spot_data['frame']).astype(np.int32)
         displacements = drifts[detected_frames, :]
 
         # keep only coordinates and correct for drift
-        spot_locations = spot_data[:, 1:3] + displacements
+        spot_locations = np.asarray(spot_data[['x', 'y']]).astype(np.int32) + displacements
         # (x, y) -> (y, x)
         spot_locations = spot_locations[:, ::-1]
 
@@ -115,8 +118,8 @@ def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0
 
         for t in range(length):
             shifted_spot_roi = spot_rois[t][spot_num]
-            shifted_context_roi = context_rois[t][spot_num]
-            shifted_background_roi = background_rois[t][spot_num]
+            shifted_context_roi = context_rois[t][spot_num].intersect(image_roi)
+            shifted_background_roi = background_rois[t][spot_num].intersect(image_roi)
 
             spot_kdtree = kd_trees[t]
             overlapping = spot_kdtree.query_ball_point(

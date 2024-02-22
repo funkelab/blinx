@@ -14,44 +14,49 @@ from .markov_chain import (
 )
 
 
-def log_p_parameters(parameters, hyper_parameters):
+def log_p_parameters(parameters, hyper_parameters, locs, scales):
     """
     the prior distribution p(parameters)
     """
     log_p = 0.0
-    if hyper_parameters.r_e_loc is not None:
-        log_p += jnp.log(
-            norm.pdf(parameters.r_e, hyper_parameters.r_e_loc, hyper_parameters.r_e_scale)
-        )
-    if hyper_parameters.r_bg_loc is not None:
-        log_p += jnp.log(
-            norm.pdf(parameters.r_bg, hyper_parameters.r_bg_loc, hyper_parameters.r_bg_scale)
-        )
-    if hyper_parameters.g_loc is not None:
-        log_p += jnp.log(
-            norm.pdf(parameters.gain, hyper_parameters.g_loc, hyper_parameters.g_scale)
-        )
-    if hyper_parameters.mu_loc is not None:
-        log_p += jnp.log(
-            norm.pdf(parameters.mu_ro, hyper_parameters.mu_loc, hyper_parameters.mu_scale)
-        )
-    if hyper_parameters.sigma_loc is not None:
-        log_p += jnp.log(
-            norm.pdf(parameters.sigma_ro, hyper_parameters.sigma_loc, hyper_parameters.sigma_scale)
-        )
+    if locs.r_e is not None:
+        log_p += jnp.log(norm.pdf(parameters.r_e, locs.r_e, scales.r_e))
+    if locs.r_bg is not None:
+        log_p += jnp.log(norm.pdf(parameters.r_bg, locs.r_bg, scales.r_bg))
+    if locs.gain is not None:
+        log_p += jnp.log(norm.pdf(parameters.gain, locs.gain, scales.gain))
+    if locs.mu_ro is not None:
+        log_p += jnp.log(norm.pdf(parameters.mu_ro, locs.mu_ro, scales.mu_ro))
+    if locs.sigma_ro is not None:
+        log_p += jnp.log(norm.pdf(parameters.sigma_ro, locs.sigma_ro, scales.sigma_ro))
 
     # We don't model a uniform prior distribution for p_on and p_off, because with bounds 0-1 it reduces to 0
 
     return log_p
 
 
-def log_p_x_parameters(trace, y, parameters, hyper_parameters):
+def log_p_x_parameters(trace, y, parameters, hyper_parameters, locs, scales):
     """
     Joint probability of p(x|parameters) and p(parameters)
     """
     return get_trace_log_likelihood(
         trace, y, parameters, hyper_parameters
-    ) + log_p_parameters(parameters, hyper_parameters)
+    ) + log_p_parameters(
+        parameters,
+        hyper_parameters,
+        locs,
+        scales
+        # r_e_loc,
+        # r_e_scale,
+        # r_bg_loc,
+        # r_bg_scale,
+        # g_loc,
+        # g_scale,
+        # mu_loc,
+        # mu_scale,
+        # sigma_loc,
+        # sigma_scale,
+    )
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
