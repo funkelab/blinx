@@ -84,8 +84,8 @@ class HyperParameters:
         max_x=None,
         num_x_bins=1024,
         p_outlier=0.1,
+        num_outliers=20,
         delta_t=200.0,
-        param_min_max_scale=5,  # how many sigmas away from mean should the model consider
         r_e_loc=None,
         r_e_scale=None,
         r_bg_loc=None,
@@ -107,6 +107,7 @@ class HyperParameters:
         self.max_x = max_x
         self.num_x_bins = num_x_bins
         self.p_outlier = p_outlier
+        self.num_outliers = num_outliers
         self.delta_t = delta_t
 
         # priors
