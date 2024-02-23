@@ -64,27 +64,27 @@ class HyperParameters:
             a weight to account for outliers, or out of distribution intensity
             measurements. Occasional measurements contain extreme noise and
             this sets a minimum possible probability
-        
+
         num_outliers (int, default=20):
 
-            the number of outlier intensities to assign constant likelihoods, 
+            the number of outlier intensities to assign constant likelihoods,
             removing them from contributing towards the difference in likelihoods between counts.
             i.e. the 20 frames with the highest intensities will be omited
 
         delta_t (float, defaul=200):
 
             the exposure time of a single frame in ms
-        
+
         r_e_loc / r_bg_loc / g_loc / mu_loc /sigma_loc (float, default=None):
 
             Mean (loc) of the prior distribution on each of the fittable parameters. If None a uniform prior is assumed.
             If either loc or scale is given for a parameter, the other must be given as well.
-        
-        r_e_scale / r_bg_scale / g_scale / mu_scale /sigma_scale (float, default=None): 
+
+        r_e_scale / r_bg_scale / g_scale / mu_scale /sigma_scale (float, default=None):
 
             Variance (scale) of the prior distribution on each of the fittable parameters. If None a uniform prior is assumed.
             If either loc or scale is given for a parameter, the other must be given as well.
-        
+
 
     """
 
@@ -104,6 +104,7 @@ class HyperParameters:
         p_outlier=0.1,
         num_outliers=20,
         delta_t=200.0,
+        num_traces=None,
         r_e_loc=None,
         r_e_scale=None,
         r_bg_loc=None,
@@ -129,25 +130,11 @@ class HyperParameters:
         self.delta_t = delta_t
 
         # priors
-        self.prior_locs = Parameters(
-            r_e=r_e_loc,
-            r_bg=r_bg_loc,
-            mu_ro=mu_loc,
-            sigma_ro=sigma_loc,
-            gain=g_loc,
-            p_on=None,
-            p_off=None,
-            probs_are_logits=True,
+        self.prior_locs = self.reshape_priors(
+            r_e_loc, r_bg_loc, g_loc, mu_loc, sigma_loc, num_traces
         )
-        self.prior_scales = Parameters(
-            r_e=r_e_scale,
-            r_bg=r_bg_scale,
-            mu_ro=mu_scale,
-            gain=g_scale,
-            sigma_ro=sigma_scale,
-            p_on=None,
-            p_off=None,
-            probs_are_logits=True,
+        self.prior_scales = self.reshape_priors(
+            r_e_scale, r_bg_scale, g_scale, mu_scale, sigma_scale, num_traces
         )
 
         if sum([r_e_loc is None, r_e_scale is None]) == 1:
@@ -163,30 +150,28 @@ class HyperParameters:
 
     # below is experimental
     # ------------------------------------------------
-    def check_length(self, val, target_length):
+
+    def _reshape(self, val, target):
         if val is None:
             return val
-        elif len(val) == 1:
-            return jnp.repeat(val, target_length)
-        elif len(val) > 1 and len(val) != target_length:
+        else:
+            val = jnp.asarray(val)
+        if val.size == 1:
+            return jnp.repeat(val, target)
+        elif val.size != target:
             raise RuntimeError("not enough prior values provided")
+        elif val.size == target:
+            return val
 
-    def check_prior_shapes(self, target_length):
-        self.prior_locs = Parameters(
-            r_e=self.check_length(self.prior_locs.r_e, target_length),
-            r_bg=self.check_length(self.prior_locs.r_bg, target_length),
-            mu_ro=self.check_length(self.prior_locs.mu_ro, target_length),
-            sigma_ro=self.check_length(self.prior_locs.sigma_ro, target_length),
-            gain=self.check_length(self.prior_locs.gain, target_length),
-            p_on=self.check_length(self.prior_locs.p_on, target_length),
-            p_off=self.check_length(self.prior_locs.p_off, target_length),
-        )
-        self.prior_scales = Parameters(
-            r_e=self.check_length(self.prior_scales.r_e, target_length),
-            r_bg=self.check_length(self.prior_scales.r_bg, target_length),
-            mu_ro=self.check_length(self.prior_scales.mu_ro, target_length),
-            sigma_ro=self.check_length(self.prior_scales.sigma_ro, target_length),
-            gain=self.check_length(self.prior_scales.gain, target_length),
-            p_on=self.check_length(self.prior_scales.p_on, target_length),
-            p_off=self.check_length(self.prior_scales.p_off, target_length),
+    def reshape_priors(self, r_e, r_bg, g, mu, sigma, num_traces):
+        # reshape each prior to size (num_traces,)
+        return Parameters(
+            r_e=self._reshape(r_e, num_traces),
+            r_bg=self._reshape(r_bg, num_traces),
+            gain=self._reshape(g, num_traces),
+            mu_ro=self._reshape(mu, num_traces),
+            sigma_ro=self._reshape(sigma, num_traces),
+            p_on=None,
+            p_off=None,
+            probs_are_logits=True,
         )
