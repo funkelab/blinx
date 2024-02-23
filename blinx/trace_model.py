@@ -14,7 +14,7 @@ from .markov_chain import (
 )
 
 
-def log_p_parameters(parameters, hyper_parameters, locs, scales):
+def log_p_parameters(parameters, locs, scales):
     """
     the prior distribution p(parameters)
     """
@@ -41,12 +41,7 @@ def log_p_x_parameters(trace, y, parameters, hyper_parameters, locs, scales):
     """
     return get_trace_log_likelihood(
         trace, y, parameters, hyper_parameters
-    ) + log_p_parameters(
-        parameters,
-        hyper_parameters,
-        locs,
-        scales
-    )
+    ) + log_p_parameters(parameters, locs, scales)
 
 
 def get_trace_log_likelihood(trace, y, parameters, hyper_parameters):
