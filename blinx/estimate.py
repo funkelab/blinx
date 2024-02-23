@@ -15,7 +15,9 @@ from .trace_model import get_trace_log_likelihood, log_p_x_parameters
 from .utils import find_maximum
 
 
-def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None, initial_parameters=None):
+def estimate_y(
+    traces, max_y, parameter_ranges=None, hyper_parameters=None, initial_parameters=None
+):
     """Infer the most likely number of fluorophores for the given traces.
 
     Args:
@@ -89,7 +91,9 @@ def estimate_y(traces, max_y, parameter_ranges=None, hyper_parameters=None, init
     return max_likelihood_y[0], all_parameters, all_log_likelihoods, all_log_evidences
 
 
-def estimate_parameters(traces, y, parameter_ranges, hyper_parameters, initial_parameters):
+def estimate_parameters(
+    traces, y, parameter_ranges, hyper_parameters, initial_parameters
+):
     """Fit the fluorescence and trace model to the given traces, assuming that
     `y` fluorophores are present in each trace.
 
@@ -110,7 +114,7 @@ def estimate_parameters(traces, y, parameter_ranges, hyper_parameters, initial_p
         hyper_parameters (:class:`HyperParameters`):
 
             The hyper-parameters used for the maximum likelihood estimation.
-        
+
         initial_parameters (:class: `Parameters`):
 
             Initial guesses for the parameters, if None guess them from a grid search over parameter_ranges
