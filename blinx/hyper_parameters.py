@@ -61,13 +61,31 @@ class HyperParameters:
 
         p_outlier (float, default=0.1):
 
-            a weight to account for outlier, or out of distribution intensity
+            a weight to account for outliers, or out of distribution intensity
             measurements. Occasional measurements contain extreme noise and
             this sets a minimum possible probability
+        
+        num_outliers (int, default=20):
+
+            the number of outlier intensities to assign constant likelihoods, 
+            removing them from contributing towards the difference in likelihoods between counts.
+            i.e. the 20 frames with the highest intensities will be omited
 
         delta_t (float, defaul=200):
 
             the exposure time of a single frame in ms
+        
+        r_e_loc / r_bg_loc / g_loc / mu_loc /sigma_loc (float, default=None):
+
+            Mean (loc) of the prior distribution on each of the fittable parameters. If None a uniform prior is assumed.
+            If either loc or scale is given for a parameter, the other must be given as well.
+        
+        r_e_scale / r_bg_scale / g_scale / mu_scale /sigma_scale (float, default=None): 
+
+            Variance (scale) of the prior distribution on each of the fittable parameters. If None a uniform prior is assumed.
+            If either loc or scale is given for a parameter, the other must be given as well.
+        
+
     """
 
     def __init__(

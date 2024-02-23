@@ -52,7 +52,7 @@ def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0
     background_size = int(4 * spot_size)
 
     # define image ROI to trim any ROIs that extend beyond bounds of frame
-    image_roi = fg.Roi((0,0), (image_sequence.shape[0], image_sequence.shape[1]))
+    image_roi = fg.Roi((0, 0), (image_sequence.shape[0], image_sequence.shape[1]))
 
     # all ROIs centered at (0, 0)
     spot_roi = fg.Roi((-spot_size, -spot_size), (2 * spot_size + 1, 2 * spot_size + 1))
@@ -73,11 +73,13 @@ def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0
         # spot_data: rows of (frame, x_coordinate, y_coordinate, ...)
         spot_data = picked_spots[picked_spots["group"] == spot_num]
 
-        detected_frames = np.asarray(spot_data['frame']).astype(np.int32)
+        detected_frames = np.asarray(spot_data["frame"]).astype(np.int32)
         displacements = drifts[detected_frames, :]
 
         # keep only coordinates and correct for drift
-        spot_locations = np.asarray(spot_data[['x', 'y']]).astype(np.int32) + displacements
+        spot_locations = (
+            np.asarray(spot_data[["x", "y"]]).astype(np.int32) + displacements
+        )
         # (x, y) -> (y, x)
         spot_locations = spot_locations[:, ::-1]
 
