@@ -8,20 +8,27 @@ class ParameterRanges:
 
     Args:
 
-        mu_range (tuple):
+        r_e_range (tuple):
 
-            The min and max mean intensity values of a single emitter
+            The min and max mean "on" photon emission rates to grid search over
+
+        r_bg_range (tuple):
+
+            The min and max background photon emission rates
             to grid search over
 
-        mu_bg_range (tuple):
+        mu_ro_range (tuple):
 
-            The min and max background intensity values
+            the min and max camera pixel offset values to grid search over
+
+        sigma_ro_range (tuple):
+
+            The min and max values of the variance of a pixel offsets
             to grid search over
 
-        sigma_range (tuple):
+        gain_range (tuple):
 
-            The min and max values of the std of the intensity of a single emitter
-            to grid search over
+            the min and max camera gain values to grid search over
 
         p_on_range (tuple):
 
@@ -31,20 +38,30 @@ class ParameterRanges:
 
             the min and max p_on values to grid search over
 
-        mu_step (int):
+        r_e_step (int):
 
             The number of values to grid search over for :class:`Parameters`
-            `mu`
+            `r_e`
 
-        mu_bg_step (int):
-
-            The number of values to grid search over for :class:`Parameters`
-            `mu_bg`
-
-        sigma_step (int):
+        r_bg_step (int):
 
             The number of values to grid search over for :class:`Parameters`
-            `sigma`
+            `r_bg`
+        
+        mu_ro_step (int):
+
+            The number of values to grid search over for :class:`Parameters`
+            `mu_ro`
+
+        sigma_ro_step (int):
+
+            The number of values to grid search over for :class:`Parameters`
+            `sigma_ro`
+        
+        gain_step (int):
+
+            The number of values to grid search over for :class:`Parameters`
+            `gain`
 
         p_on_step (int):
 
@@ -57,6 +74,7 @@ class ParameterRanges:
             `p_on`
     """
 
+    # TODO: update these defaults
     def __init__(
         self,
         r_e_range=(100, 30000),
