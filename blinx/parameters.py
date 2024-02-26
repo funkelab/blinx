@@ -30,10 +30,10 @@ class Parameters:
         sigma_ro (float):
 
             "Camera parameter" the mean per pixel variance of the number of electrons given off when no photons are detected
-        
+
         gain (float):
 
-            "Camera parameter" gain used when acquiring the original image sequence. If using 
+            "Camera parameter" gain used when acquiring the original image sequence. If using
             a sCMOS camera this value is the average pixel gain.
 
         p_on (float):
