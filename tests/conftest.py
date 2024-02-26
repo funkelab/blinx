@@ -9,7 +9,16 @@ def trace_with_groundtruth():
     """Create a random trace for other tests to work on."""
 
     y = 5
-    parameters = Parameters(r_e=5.0, r_bg=5.0, mu_ro=5000.0, sigma_ro=1, gain=2.0, p_on=0.1, p_off=0.3, probs_are_logits=False)
+    parameters = Parameters(
+        r_e=5.0,
+        r_bg=5.0,
+        mu_ro=5000.0,
+        sigma_ro=1,
+        gain=2.0,
+        p_on=0.1,
+        p_off=0.3,
+        probs_are_logits=False,
+    )
     hyper_parameters = HyperParameters(max_x=20000)
     num_frames = 1000
 
@@ -28,7 +37,16 @@ def trace_with_groundtruth_noisy():
     """Create a random trace for other tests to work on."""
 
     y = 5
-    parameters = Parameters(r_e=5.0, r_bg=5.0, mu_ro=5000.0, sigma_ro=1000, gain=2.0, p_on=0.05, p_off=0.05, probs_are_logits=False)
+    parameters = Parameters(
+        r_e=5.0,
+        r_bg=5.0,
+        mu_ro=5000.0,
+        sigma_ro=1000.0,
+        gain=2.0,
+        p_on=0.05,
+        p_off=0.05,
+        probs_are_logits=False,
+    )
     hyper_parameters = HyperParameters(max_x=20000)
     num_frames = 1000
 
