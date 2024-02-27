@@ -4,25 +4,31 @@ from blinx import ParameterRanges
 
 def test_to_parameters():
     parameter_ranges = ParameterRanges(
-        mu_range=(1, 4),
-        mu_bg_range=(5, 5),
-        sigma_range=(0.0, 0.1),
+        r_e_range=(1, 4),
+        r_bg_range=(5, 5),
+        mu_ro_range=(4000, 5000),
+        sigma_ro_range=(500, 600),
+        gain_range=(1.0, 2.0),
         p_on_range=(0.0, 1.0),
         p_off_range=(0.0, 1.0),
-        mu_step=4,
-        mu_bg_step=1,
-        sigma_step=2,
-        p_on_step=10,
-        p_off_step=10,
+        r_e_step=4,
+        r_bg_step=1,
+        mu_ro_step=3,
+        sigma_ro_step=3,
+        gain_step=2,
+        p_on_step=3,
+        p_off_step=3,
     )
 
     parameters = parameter_ranges.to_parameters()
 
-    assert parameters.mu.shape == (800,)
-    assert parameters.mu_bg.shape == (800,)
-    assert parameters.sigma.shape == (800,)
-    assert parameters.p_on.shape == (800,)
-    assert parameters.p_off.shape == (800,)
+    assert parameters.r_e.shape == (648,)
+    assert parameters.r_bg.shape == (648,)
+    assert parameters.mu_ro.shape == (648,)
+    assert parameters.sigma_ro.shape == (648,)
+    assert parameters.gain.shape == (648,)
+    assert parameters.p_on.shape == (648,)
+    assert parameters.p_off.shape == (648,)
 
     # number of configurations:
     #
@@ -36,12 +42,14 @@ def test_to_parameters():
 
     np.testing.assert_allclose(
         [
-            parameters.mu[100],
-            parameters.mu_bg[100],
-            parameters.sigma[100],
+            parameters.r_e[100],
+            parameters.r_bg[100],
+            parameters.mu_ro[100],
+            parameters.sigma_ro[100],
+            parameters.gain[100],
             parameters.p_on[100],
             parameters.p_off[100],
         ],
-        [1, 5, 0.1, 0.0, 0.0],
+        [1, 5, 4500, 600, 2, 0.0, 0.5],
         rtol=1e-5,
     )

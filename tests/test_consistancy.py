@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 from blinx import HyperParameters
-from blinx.trace_model import get_trace_log_likelihood
+from blinx.trace_model import log_p_x_parameters
 
 
 def test_forward(trace_with_groundtruth):
@@ -10,9 +10,16 @@ def test_forward(trace_with_groundtruth):
     y = trace_with_groundtruth["y"]
 
     hyper_parameters = HyperParameters()
-    hyper_parameters.max_x = 2 * y * parameters.mu
+    hyper_parameters.max_x = trace.max()
     hyper_parameters.num_guesses = 1
 
-    log_likelihood = get_trace_log_likelihood(trace, y, parameters, hyper_parameters)
-
-    assert jnp.isclose(log_likelihood, -1446.202, atol=0.001)
+    log_likelihood = log_p_x_parameters(
+        trace,
+        y,
+        parameters,
+        hyper_parameters,
+        hyper_parameters.prior_locs,
+        hyper_parameters.prior_scales,
+    )
+    print(log_likelihood)
+    assert jnp.isclose(log_likelihood, -4328.961, atol=0.001)

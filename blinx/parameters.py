@@ -15,18 +15,26 @@ class Parameters:
 
     Args:
 
-        mu (float):
+        r_e (float):
 
-            The mean intensity of a single 'on' emitter
+            The mean photon emission rate of an "on" emitter (units of photons / ms)
 
-        mu_bg (float):
+        r_bg (float):
 
-            the mean background intensity, or the expected intensity
-            when no emitters are 'on'
+            the mean photon emission rate of the background (units of photons / ms)
 
-        sigma (float):
+        mu_ro (float):
 
-            the standard deviation in the intensity of a single 'on' emitter
+            "Camera parameter" the mean number of electrons given off per pixel when no photons are detected, also known as the offset
+
+        sigma_ro (float):
+
+            "Camera parameter" the mean per pixel variance of the number of electrons given off when no photons are detected
+
+        gain (float):
+
+            "Camera parameter" gain used when acquiring the original image sequence. If using
+            a sCMOS camera this value is the average pixel gain.
 
         p_on (float):
 

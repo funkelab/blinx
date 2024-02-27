@@ -1,5 +1,6 @@
 import pytest
 from blinx.parameters import Parameters
+from blinx import HyperParameters
 from blinx.trace_model import generate_trace
 
 
@@ -8,10 +9,20 @@ def trace_with_groundtruth():
     """Create a random trace for other tests to work on."""
 
     y = 5
-    parameters = Parameters(mu=100.0, mu_bg=10.0, sigma=0.001, p_on=0.1, p_off=0.3)
+    parameters = Parameters(
+        r_e=5.0,
+        r_bg=5.0,
+        mu_ro=5000.0,
+        sigma_ro=1.0,
+        gain=2.0,
+        p_on=0.1,
+        p_off=0.3,
+        probs_are_logits=False,
+    )
+    hyper_parameters = HyperParameters(max_x=20000)
     num_frames = 1000
 
-    trace, zs = generate_trace(y, parameters, num_frames, 4)
+    trace, zs = generate_trace(y, parameters, num_frames, hyper_parameters, 4)
 
     return {
         "trace": trace,
@@ -26,10 +37,20 @@ def trace_with_groundtruth_noisy():
     """Create a random trace for other tests to work on."""
 
     y = 5
-    parameters = Parameters(mu=100.0, mu_bg=10.0, sigma=0.03, p_on=0.05, p_off=0.05)
+    parameters = Parameters(
+        r_e=5.0,
+        r_bg=5.0,
+        mu_ro=5000.0,
+        sigma_ro=1000.0,
+        gain=2.0,
+        p_on=0.05,
+        p_off=0.05,
+        probs_are_logits=False,
+    )
+    hyper_parameters = HyperParameters(max_x=20000)
     num_frames = 1000
 
-    trace, zs = generate_trace(y, parameters, num_frames, 4)
+    trace, zs = generate_trace(y, parameters, num_frames, hyper_parameters, 4)
 
     return {
         "trace": trace,
