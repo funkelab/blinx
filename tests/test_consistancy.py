@@ -13,6 +13,13 @@ def test_forward(trace_with_groundtruth):
     hyper_parameters.max_x = trace.max()
     hyper_parameters.num_guesses = 1
 
-    log_likelihood = log_p_x_parameters(trace, y, parameters, hyper_parameters, hyper_parameters.prior_locs, hyper_parameters.prior_scales)
+    log_likelihood = log_p_x_parameters(
+        trace,
+        y,
+        parameters,
+        hyper_parameters,
+        hyper_parameters.prior_locs,
+        hyper_parameters.prior_scales,
+    )
     print(log_likelihood)
     assert jnp.isclose(log_likelihood, -4328.961, atol=0.001)

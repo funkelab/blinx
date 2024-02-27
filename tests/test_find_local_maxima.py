@@ -48,12 +48,11 @@ def test_single_maximum():
     assert len(maximum_indices[0]) == 1
     np.testing.assert_equal(np.asarray(maximum_indices), np.asarray(([9], [9])))
 
-
     # array with a nan
-    a = np.zeros((10,10), dtype=np.float32)
-    a[2,2] = np.nan
-    a [5,5] = 2.0
-    a= jnp.array(a)
+    a = np.zeros((10, 10), dtype=np.float32)
+    a[2, 2] = np.nan
+    a[5, 5] = 2.0
+    a = jnp.array(a)
 
     maximum_indices = find_maximum(a)
 

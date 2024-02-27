@@ -13,7 +13,7 @@ def trace_with_groundtruth():
         r_e=5.0,
         r_bg=5.0,
         mu_ro=5000.0,
-        sigma_ro=1,
+        sigma_ro=1.0,
         gain=2.0,
         p_on=0.1,
         p_off=0.3,

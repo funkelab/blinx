@@ -6,9 +6,9 @@ def test_to_parameters():
     parameter_ranges = ParameterRanges(
         r_e_range=(1, 4),
         r_bg_range=(5, 5),
-        mu_ro_range=(4000,5000),
+        mu_ro_range=(4000, 5000),
         sigma_ro_range=(500, 600),
-        gain_range=(1.0,2.0),
+        gain_range=(1.0, 2.0),
         p_on_range=(0.0, 1.0),
         p_off_range=(0.0, 1.0),
         r_e_step=4,
