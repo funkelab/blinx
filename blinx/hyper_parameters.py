@@ -115,6 +115,10 @@ class HyperParameters:
         mu_scale=None,
         sigma_loc=None,
         sigma_scale=None,
+        p_on_loc=None,
+        p_on_scale=None,
+        p_off_loc=None,
+        p_off_scale=None,
     ):
         self.min_y = min_y
         self.num_guesses = num_guesses
@@ -131,10 +135,17 @@ class HyperParameters:
 
         # priors
         self.prior_locs = self.reshape_priors(
-            r_e_loc, r_bg_loc, g_loc, mu_loc, sigma_loc, num_traces
+            r_e_loc, r_bg_loc, g_loc, mu_loc, sigma_loc, p_on_loc, p_off_loc, num_traces
         )
         self.prior_scales = self.reshape_priors(
-            r_e_scale, r_bg_scale, g_scale, mu_scale, sigma_scale, num_traces
+            r_e_scale,
+            r_bg_scale,
+            g_scale,
+            mu_scale,
+            sigma_scale,
+            p_on_scale,
+            p_off_scale,
+            num_traces,
         )
 
         if sum([r_e_loc is None, r_e_scale is None]) == 1:
@@ -146,6 +157,10 @@ class HyperParameters:
         if sum([mu_loc is None, mu_scale is None]) == 1:
             raise RuntimeError("Both mu_loc and mu_scale need to be provided")
         if sum([sigma_loc is None, sigma_scale is None]) == 1:
+            raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
+        if sum([p_on_loc is None, p_on_scale is None]) == 1:
+            raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
+        if sum([p_off_loc is None, p_off_scale is None]) == 1:
             raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
 
     # below is experimental
@@ -163,7 +178,7 @@ class HyperParameters:
         elif val.size == target:
             return val
 
-    def reshape_priors(self, r_e, r_bg, g, mu, sigma, num_traces):
+    def reshape_priors(self, r_e, r_bg, g, mu, sigma, p_on, p_off, num_traces):
         # reshape each prior to size (num_traces,)
         return Parameters(
             r_e=self._reshape(r_e, num_traces),
@@ -171,7 +186,7 @@ class HyperParameters:
             gain=self._reshape(g, num_traces),
             mu_ro=self._reshape(mu, num_traces),
             sigma_ro=self._reshape(sigma, num_traces),
-            p_on=None,
-            p_off=None,
+            p_on=self._reshape(p_on, num_traces),
+            p_off=self._reshape(p_off, num_traces),
             probs_are_logits=True,
         )
