@@ -131,7 +131,7 @@ def sample_x_given_z(z, r_e, r_bg, mean_ro, sigma_ro, gain, key, hyper_parameter
     delta_t = hyper_parameters.delta_t
 
     loc = (z * r_e + r_bg) * delta_t + sigma_ro / gain**2
-    scale = jnp.sqrt((z * r_e + r_bg) * delta_t + sigma_ro / gain**2)
+    scale = jnp.sqrt((z * r_e + r_bg) * delta_t + sigma_ro / gain**2) # scale by standard deviation
 
     x = ((std_samples * scale + loc) - sigma_ro / gain**2) * gain + mean_ro
 

@@ -29,8 +29,10 @@ def log_p_parameters(parameters, locs, scales):
         log_p += jnp.log(norm.pdf(parameters.mu_ro, locs.mu_ro, scales.mu_ro))
     if locs.sigma_ro is not None:
         log_p += jnp.log(norm.pdf(parameters.sigma_ro, locs.sigma_ro, scales.sigma_ro))
-
-    # We don't model a uniform prior distribution for p_on and p_off, because with bounds 0-1 it reduces to 0
+    if locs._p_on_logit is not None:
+        log_p += jnp.log(norm.pdf(parameters.p_on, locs._p_on_logit, scales._p_on_logit))
+    if locs._p_off_logit is not None:
+        log_p += jnp.log(norm.pdf(parameters.p_off, locs._p_off_logit, scales._p_off_logit))
 
     return log_p
 
