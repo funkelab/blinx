@@ -16,7 +16,7 @@ when only their combined intensity can be measured.
 `blinx` directly models the photo-physics of the system as well as temporal 
 fluctuations in intensity to produce a probabilistic estimate of the molecular count.
 
-![iamge](imgs/overview.pdf)
+![iamge](imgs/overview_fig.png)
 
 Detailed documentation can be found: [here](https://funkelab.github.io/blinx/)
 
