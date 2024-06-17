@@ -15,7 +15,17 @@ authors = [
     { name = 'Alex Hillsley', email = 'hillsleya@janelia.hhmi.org' },
 ]
 dynamic = ["version"]
-dependencies = ["numpy", "scipy", "jax", "jaxlib", "optax", "scikit-image", "tqdm", "pandas", "h5py"]
+dependencies = [
+    "numpy",
+    "scipy",
+    "jax",
+    "jaxlib",
+    "optax",
+    "scikit-image",
+    "tqdm",
+    "pandas",
+    "h5py",
+    "fun;lib.geometry"]
 
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest", "pytest-cov", "ruff", "twine", "build"]
