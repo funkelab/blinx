@@ -1,7 +1,5 @@
 blinx
-=====
-A Bayesian method to Count the Number of Molecules within a Diffraction Limited Spot
---
+==
 
 - **[Introduction](#introduction)**
 - **[Installation](#installation)**
@@ -11,10 +9,11 @@ A Bayesian method to Count the Number of Molecules within a Diffraction Limited 
 
 # Introduction
 This repository contains code to estimate the number of fluorescent emitters
-when only their combined intensity can be measured.
-
-`blinx` directly models the photo-physics of the system as well as temporal 
-fluctuations in intensity to produce a probabilistic estimate of the molecular count.
+when only their combined intensity can be measured, as reported in 
+***A Bayesian Method to Count 
+the Number of Molecules within a Diffraction Limited Spot***
+[pre-print](https://www.biorxiv.org/content/10.1101/2024.04.18.590066v2) now available on BioRxiv.
+Experiments associated with the pre-print can be found in [blix_experiments](https://github.com/funkelab/blinx_experiments)
 
 
 <img src="imgs/overview.png" />
@@ -42,17 +41,61 @@ pip install 'jax==0.4.1' 'jaxlib==0.4.1+cuda11.cudnn82' -f https://storage.googl
 
 ```
 # Examples
-`blinx` contains two primary modules. An estimate module to determine the posterior over molecular count, 
-and a forward model to generate simulated traces from a given set of parameters.
-
-### Fitting:
+`blinx` can be used for both inference and simulation. The `estimate` module contains functions to run inference on an 
+intensity trace and determine the molecular count, while the `generate_trace` function can be used to simulate traces 
+with known parameters.
+### Inference:
 
 `blinx.estimate`
+```python
+import blinx
+from blinx.estimate import estimate_y
+
+traces = ... # load traces
+
+# specify the range of an initial parameter grid search
+parameter_ranges = blinx.ParameterRanges()
+# Specify hyper-parameters
+hyper_params = blinx.HyperParameters()
+
+count, map_parameters, likelihood, evidence = estimate_y(
+	traces=traces,
+	max_y=..., # maximum count to test
+	parameter_ranges=parameter_ranges,
+	hyper_parameters=hyper_params)
+```
 
 
-### Forward Model:
+### Simulation:
 
 `blinx.trace_model.generate_trace`
+```python
+import blinx
+from blinx.trace_model import generate_trace
 
+# Specify kinetic and intensity parameters
+parameters = blinx.parameters.Parameters()
+# Specify hyper-parameters
+hyper_params = blinx.HyperParameters()
+
+sim_trace, sim_zs = generate_trace(
+	y=4, # the number of emitters
+	parameters=parameters,
+	num_frames=4000, # length of the simulated trace
+	hyper_parameters=hyper_params)
+
+```
 
 # Citation
+
+If you use blinx in your research, please cite the BioRxiv pre-print:
+
+```bash
+@article{hillsley_bayesian_2024,
+	title = {A Bayesian Solution to Count the Number of Molecules within a Diffraction Limited Spot},
+	author = {Hillsley, Alexander and Stein, Johannes and Tillberg, Paul W. and Stern, David L. and Funke, Jan},
+	doi = {10.1101/2024.04.18.590066},
+	publisher = {{bioRxiv}},
+	date = {2024-04-22},
+}
+```
