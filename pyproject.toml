@@ -25,7 +25,8 @@ dependencies = [
     "tqdm",
     "pandas",
     "h5py",
-    "fun;lib.geometry"]
+    "funlib.geometry"]
+
 
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest", "pytest-cov", "ruff", "twine", "build"]
