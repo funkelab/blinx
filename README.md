@@ -1,5 +1,4 @@
-blinx
-==
+# blinx
 
 - **[Introduction](#introduction)**
 - **[Installation](#installation)**
@@ -13,7 +12,7 @@ when only their combined intensity can be measured, as reported in
 ***A Bayesian Method to Count 
 the Number of Molecules within a Diffraction Limited Spot***
 [pre-print](https://www.biorxiv.org/content/10.1101/2024.04.18.590066v2) now available on BioRxiv.
-Experiments associated with the pre-print can be found in [blix_experiments](https://github.com/funkelab/blinx_experiments)
+Experiments associated with the pre-print can be found in [blinx_experiments](https://github.com/funkelab/blinx_experiments)
 
 
 <img src="imgs/overview.png" />
