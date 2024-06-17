@@ -15,7 +15,7 @@ authors = [
     { name = 'Alex Hillsley', email = 'hillsleya@janelia.hhmi.org' },
 ]
 dynamic = ["version"]
-dependencies = ["numpy", "scipy", "jax", "jaxlib", "optax", "scikit-image", "tqdm"]
+dependencies = ["numpy", "scipy", "jax", "jaxlib", "optax", "scikit-image", "tqdm", "pandas", "h5py"]
 
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest", "pytest-cov", "ruff", "twine", "build"]
@@ -27,7 +27,6 @@ docs = [
     "tomli",
     "jupyter_sphinx",
     "plotly",
-    "pandas"
 ]
 
 [project.urls]
