@@ -6,7 +6,7 @@ from jax.scipy.stats import norm
 from jax import random
 from scipy.special import comb
 
-from .fluorescence_model import p_x_given_z, sample_x_given_z, p_norm
+from .fluorescence_model import p_x_given_z, sample_x_given_z
 from .markov_chain import (
     get_measurement_log_likelihood,
     get_steady_state,

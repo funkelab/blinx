@@ -11,7 +11,7 @@ from .parameters import Parameters
 
 # FIXME: post_process should be renamed and find a new home
 from .post_process import post_process as find_most_likely_y
-from .trace_model import get_trace_log_likelihood, log_p_x_parameters
+from .trace_model import log_p_x_parameters
 from .utils import find_maximum
 
 

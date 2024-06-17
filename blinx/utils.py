@@ -1,6 +1,5 @@
 import jax.numpy as jnp
 import numpy as np
-import scipy.signal
 
 
 def find_maximum(matrix):

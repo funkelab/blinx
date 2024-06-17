@@ -2,8 +2,6 @@ import jax
 import jax.numpy as jnp
 from jax import random
 
-from .constants import eps
-
 
 def p_x_given_z(
     x_left, x_right, z, r_e, r_bg, mean_ro, sigma_ro, gain, hyper_parameters
