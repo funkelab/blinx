@@ -77,20 +77,20 @@ class ParameterRanges:
     # TODO: update these defaults
     def __init__(
         self,
-        r_e_range=(100, 30000),
-        r_bg_range=(5000, 5000),
-        mu_ro_range=(1000, 3000),
-        sigma_ro_range=(0.1, 0.1),
+        r_e_range=(1, 5),
+        r_bg_range=(1, 10),
+        mu_ro_range=(1000, 5000),
+        sigma_ro_range=(0.1, 0.2),
         gain_range=(1, 3),
         p_on_range=(1e-4, 1.0),
         p_off_range=(1e-4, 1.0),
-        r_e_step=100,
-        r_bg_step=1,
+        r_e_step=5,
+        r_bg_step=5,
         mu_ro_step=1,
         sigma_ro_step=1,
         gain_step=1,
-        p_on_step=20,
-        p_off_step=20,
+        p_on_step=5,
+        p_off_step=5,
     ):
         self.r_e_range = Range(*r_e_range, r_e_step)
         self.r_bg_range = Range(*r_bg_range, r_bg_step)
