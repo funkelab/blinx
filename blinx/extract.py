@@ -22,7 +22,7 @@ def extract_traces(image_file_path, pick_file_path, drift_file_path, spot_size=0
             - generated through picasso render
 
         drift_file_path (string):
-            - a .txt file containg the drift correction values for each frame
+            - a .txt file containing the drift correction values for each frame
                 of the tiff movie
             - generated as an output of picasso localize, running undrift RCC,
                 or undrift from picks

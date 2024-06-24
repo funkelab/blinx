@@ -41,13 +41,13 @@ class HyperParameters:
             The gradient step size used in sgd optimization, individually
             specified for each parameter in :class:`Parameters`
 
-            Importantly all values must be type: float for gradietns to be
+            Importantly all values must be type: float for gradients to be
             calculated
 
         distribution_threshold (float, default=1e-1):
 
             Used in post_process to compare distribution of optimal states to
-            the stady state distribution. Useful in filtering bad fits
+            the steady state distribution. Useful in filtering bad fits
 
         max_x (float):
 
@@ -56,7 +56,7 @@ class HyperParameters:
 
         num_x_bins (int, default=1024):
 
-            number of bins to use when discretizing the trace and calcualting
+            number of bins to use when discretizing the trace and calculating
             individual measurement probabilities
 
         p_outlier (float, default=0.1):
@@ -69,9 +69,9 @@ class HyperParameters:
 
             the number of outlier intensities to assign constant likelihoods,
             removing them from contributing towards the difference in likelihoods between counts.
-            i.e. the 20 frames with the highest intensities will be omited
+            i.e. the 20 frames with the highest intensities will be omitted
 
-        delta_t (float, defaul=200):
+        delta_t (float, default=200):
 
             the exposure time of a single frame in ms
 
@@ -163,9 +163,6 @@ class HyperParameters:
             raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
         if sum([p_off_loc is None, p_off_scale is None]) == 1:
             raise RuntimeError("Both sigma_loc and sigma_scale need to be provided")
-
-    # below is experimental
-    # ------------------------------------------------
 
     def _reshape(self, val, target):
         if val is None:
