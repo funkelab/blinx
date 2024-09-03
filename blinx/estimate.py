@@ -313,7 +313,7 @@ def get_initial_parameter_guesses(traces, y, parameter_ranges, hyper_parameters)
         jnp.stack([guesses[i].gain for i in range(num_traces)]),
         jnp.stack([guesses[i]._p_on_logit for i in range(num_traces)]),
         jnp.stack([guesses[i]._p_off_logit for i in range(num_traces)]),
-        probs_are_logits=True,
+        _probs_are_logits=True,
     )
 
     return guesses

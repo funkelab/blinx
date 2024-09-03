@@ -17,7 +17,7 @@ def trace_with_groundtruth():
         gain=2.0,
         p_on=0.1,
         p_off=0.3,
-        probs_are_logits=False,
+        _probs_are_logits=False,
     )
     hyper_parameters = HyperParameters(max_x=20000)
     num_frames = 1000
@@ -45,7 +45,7 @@ def trace_with_groundtruth_noisy():
         gain=2.0,
         p_on=0.05,
         p_off=0.05,
-        probs_are_logits=False,
+        _probs_are_logits=False,
     )
     hyper_parameters = HyperParameters(max_x=20000)
     num_frames = 1000

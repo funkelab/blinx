@@ -44,7 +44,7 @@ class Parameters:
             the probability of an emitter that is 'on' at time t-1 turning
             'off' at time t
 
-        probs_are_logits (bool):
+        _probs_are_logits (bool):
 
             Set to true to indicate that `p_on` and `p_off` are given as logits
             instead of as probabilities. Used internally.
@@ -52,14 +52,14 @@ class Parameters:
     """
 
     def __init__(
-        self, r_e, r_bg, mu_ro, sigma_ro, gain, p_on, p_off, probs_are_logits=False
+        self, r_e, r_bg, mu_ro, sigma_ro, gain, p_on, p_off, _probs_are_logits=False
     ):
         self.r_e = r_e
         self.r_bg = r_bg
         self.mu_ro = mu_ro
         self.sigma_ro = sigma_ro
         self.gain = gain
-        if probs_are_logits:
+        if _probs_are_logits:
             self._p_on_logit = p_on
             self._p_off_logit = p_off
         else:
@@ -85,7 +85,7 @@ class Parameters:
             self.gain.reshape(shape),
             self._p_on_logit.reshape(shape),
             self._p_off_logit.reshape(shape),
-            probs_are_logits=True,
+            _probs_are_logits=True,
         )
 
     def flatten(self):
@@ -119,7 +119,7 @@ class Parameters:
             self.gain[key],
             self._p_on_logit[key],
             self._p_off_logit[key],
-            probs_are_logits=True,
+            _probs_are_logits=True,
         )
 
     def __repr__(self):
@@ -150,7 +150,7 @@ class Parameters:
 
     @classmethod
     def tree_unflatten(cls, aux, children):
-        return cls(*children, probs_are_logits=True)
+        return cls(*children, _probs_are_logits=True)
 
     @classmethod
     def stack(cls, parameters):
@@ -162,5 +162,5 @@ class Parameters:
             jnp.stack([p.gain for p in parameters]),
             jnp.stack([p._p_on_logit for p in parameters]),
             jnp.stack([p._p_off_logit for p in parameters]),
-            probs_are_logits=True,
+            _probs_are_logits=True,
         )

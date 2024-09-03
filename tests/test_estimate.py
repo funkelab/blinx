@@ -68,7 +68,7 @@ def test_r_e_inference(trace_with_groundtruth_noisy):
         gain=jnp.expand_dims(jnp.repeat(2.0, 1), axis=1),
         p_on=jnp.expand_dims(jnp.repeat(0.05, 1), axis=1),
         p_off=jnp.expand_dims(jnp.repeat(0.05, 1), axis=1),
-        probs_are_logits=False,
+        _probs_are_logits=False,
     )
     fit_parameters, likelihood, evidence = estimate_parameters(
         trace,
@@ -106,7 +106,7 @@ def test_r_bg_inference(trace_with_groundtruth_noisy):
         gain=jnp.expand_dims(jnp.repeat(2.0, 1), axis=1),
         p_on=jnp.expand_dims(jnp.repeat(0.05, 1), axis=1),
         p_off=jnp.expand_dims(jnp.repeat(0.05, 1), axis=1),
-        probs_are_logits=False,
+        _probs_are_logits=False,
     )
     fit_parameters, likelihood, evidence = estimate_parameters(
         trace,
@@ -144,7 +144,7 @@ def test_p_on_inference(trace_with_groundtruth_noisy):
         gain=jnp.expand_dims(jnp.repeat(2.0, 1), axis=1),
         p_on=jnp.expand_dims(jnp.repeat(0.1, 1), axis=1),
         p_off=jnp.expand_dims(jnp.repeat(0.05, 1), axis=1),
-        probs_are_logits=False,
+        _probs_are_logits=False,
     )
     fit_parameters, likelihood, evidence = estimate_parameters(
         trace,
@@ -182,7 +182,7 @@ def test_p_off_inference(trace_with_groundtruth_noisy):
         gain=jnp.expand_dims(jnp.repeat(2.0, 1), axis=1),
         p_on=jnp.expand_dims(jnp.repeat(0.05, 1), axis=1),
         p_off=jnp.expand_dims(jnp.repeat(0.1, 1), axis=1),
-        probs_are_logits=False,
+        _probs_are_logits=False,
     )
     fit_parameters, likelihood, evidence = estimate_parameters(
         trace,

@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 
 def create_step_sizes(*args, **kwargs):
-    return Parameters(*args, **kwargs, probs_are_logits=True)
+    return Parameters(*args, **kwargs, _probs_are_logits=True)
 
 
 class HyperParameters:
@@ -187,5 +187,5 @@ class HyperParameters:
             sigma_ro=self._reshape(sigma, num_traces),
             p_on=self._reshape(p_on, num_traces),
             p_off=self._reshape(p_off, num_traces),
-            probs_are_logits=True
+            _probs_are_logits=True
         )
