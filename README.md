@@ -15,7 +15,7 @@ the Number of Molecules within a Diffraction Limited Spot***
 Experiments associated with the pre-print can be found in [blinx_experiments](https://github.com/funkelab/blinx_experiments)
 
 
-<img src="imgs/overview.png" />
+<img src="imgs/overview_1.png" />
 
 Detailed documentation can be found: [here](https://funkelab.github.io/blinx/)
 
